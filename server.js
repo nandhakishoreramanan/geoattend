@@ -14,7 +14,7 @@ const db = require('./db');
 const { calculateDistance, verifyGeofence } = require('./geo');
 const { generateDynamicToken, validateToken, TOKEN_WINDOW_SECONDS } = require('./qr');
 const { generateJWT, verifyJWT, verifyPassword, parseGoogleCredential } = require('./auth');
-const { generateAttendanceInsights, generateEventDescription, searchEventsNaturalLanguage } = require('./ai');
+const { generateAttendanceInsights, generateEventDescription, searchEventsNaturalLanguage, getOllamaStatus, setOllamaConfig, askEventAssistant } = require('./ai');
 
 // Load environment variables from .env if present
 try {
@@ -1012,7 +1012,57 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, stats);
     }
 
-    // GET /api/events/:id/ai-insights - AI Attendance Insights (Optional Bonus ⭐)
+    // GET /api/ai/status - Check local Ollama / Qwen model status
+    if (pathname === '/api/ai/status' && method === 'GET') {
+      const status = await getOllamaStatus();
+      return sendJson(res, 200, status);
+    }
+
+    // POST /api/ai/config - Configure local Ollama host or model name
+    if (pathname === '/api/ai/config' && method === 'POST') {
+      const body = await parseJsonBody(req);
+      setOllamaConfig(body);
+      const status = await getOllamaStatus();
+      return sendJson(res, 200, { success: true, ...status });
+    }
+
+    // POST /api/ai/chat - Interactive organizer Q&A powered by local Qwen
+    if (pathname === '/api/ai/chat' && method === 'POST') {
+      const body = await parseJsonBody(req);
+      const { message, event_id } = body;
+      if (!message) return sendJson(res, 400, { error: 'Message is required' });
+
+      let event = null;
+      let attendees = [];
+      let stats = null;
+
+      if (event_id) {
+        event = db.getEventById(event_id);
+        if (event) {
+          attendees = db.getAttendeesByEvent(event_id);
+          stats = db.getEventStats(event_id);
+        }
+      }
+
+      if (!event) {
+        const allEvents = db.getAllEvents();
+        if (allEvents.length > 0) {
+          event = allEvents[0];
+          attendees = db.getAttendeesByEvent(event.id);
+          stats = db.getEventStats(event.id);
+        }
+      }
+
+      const replyData = await askEventAssistant(
+        message,
+        event || { title: 'General Session', venue_name: 'SRM Campus', radius_meters: 80 },
+        attendees,
+        stats
+      );
+      return sendJson(res, 200, replyData);
+    }
+
+    // GET /api/events/:id/ai-insights - AI Attendance Insights (Local Qwen + Heuristic Fallback)
     const aiInsightsMatch = pathname.match(/^\/api\/events\/([^/]+)\/ai-insights$/);
     if (aiInsightsMatch && method === 'GET') {
       const eventId = aiInsightsMatch[1];
@@ -1021,15 +1071,15 @@ async function handleRequest(req, res) {
 
       const attendees = db.getAttendeesByEvent(eventId);
       const stats = db.getEventStats(eventId);
-      const insights = generateAttendanceInsights(event, attendees, stats.metrics);
+      const insights = await generateAttendanceInsights(event, attendees, stats.metrics);
       return sendJson(res, 200, { insights });
     }
 
-    // POST /api/ai/generate-description - AI Description Generator (Optional Bonus ⭐)
+    // POST /api/ai/generate-description - AI Description Generator (Local Qwen + Heuristic Fallback)
     if (pathname === '/api/ai/generate-description' && method === 'POST') {
       const body = await parseJsonBody(req);
       const { title, venue, category } = body;
-      const result = generateEventDescription(title || 'Campus Seminar', venue || 'SRM Auditorium', category || 'academic');
+      const result = await generateEventDescription(title || 'Campus Seminar', venue || 'SRM Auditorium', category || 'academic');
       return sendJson(res, 200, result);
     }
 

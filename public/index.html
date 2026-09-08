@@ -176,6 +176,13 @@
             <span>📊</span>
             <span>Download CSV Roster</span>
           </button>
+          <button id="drawerBtnLocalAi" type="button" class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors text-left cursor-pointer">
+            <span class="flex items-center gap-2.5">
+              <span>🤖</span>
+              <span>Local AI (Qwen)</span>
+            </span>
+            <span id="drawerAiStatusBadge" class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Checking</span>
+          </button>
         </div>
       </div>
 
@@ -403,6 +410,11 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
+          </button>
+
+          <button id="btnOpenLocalAi" title="Local Qwen AI Assistant & Insights" class="btn-circle-action hover:border-blue-400 hover:text-blue-500 relative" aria-label="Local AI Engine">
+            <span class="text-sm">🤖</span>
+            <span id="btnOpenLocalAiBadge" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-slate-400 border border-white dark:border-slate-900"></span>
           </button>
         </div>
 
@@ -1038,8 +1050,15 @@
         </div>
         
         <div>
-          <label for="newEventDesc" class="block text-xs font-bold text-slate-700 mb-1">Description (Optional)</label>
+          <div class="flex items-center justify-between mb-1">
+            <label for="newEventDesc" class="block text-xs font-bold text-slate-700">Description (Optional)</label>
+            <button type="button" id="btnAiDraftDesc" class="text-[11px] font-bold text-slate-800 hover:text-slate-950 flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 py-0.5 rounded-full border border-slate-300 transition-all cursor-pointer shadow-2xs">
+              <span class="text-xs">✨</span>
+              <span>Draft with Local Qwen</span>
+            </button>
+          </div>
           <textarea id="newEventDesc" rows="2" placeholder="Brief event summary and details..." class="w-full bg-slate-100/80 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white font-medium transition-all"></textarea>
+          <div id="aiDraftStatus" class="text-[10px] text-slate-500 mt-1 font-medium hidden"></div>
         </div>
 
         <!-- Venue Coordinates & Map Picker -->
@@ -1248,6 +1267,145 @@
           <span>Save Whitelist</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Local Qwen AI Engine & Assistant -->
+  <div id="localAiModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bento-card max-w-2xl w-full p-6 sm:p-8 space-y-5 max-h-[90vh] overflow-y-auto border border-slate-300 shadow-2xl bg-white dark:bg-[#111726] text-slate-900 dark:text-white relative">
+      <!-- Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Local Intelligence</span>
+            <span id="aiModalStatusBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Checking...</span>
+          </div>
+          <h3 class="text-lg font-display font-black text-slate-950 dark:text-white flex items-center gap-2 mt-0.5">
+            <span>🤖 Local Qwen AI Engine</span>
+            <span class="text-xs font-normal text-slate-500 dark:text-slate-400">(Ollama)</span>
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">100% On-Device Privacy • No Paid API Keys Needed • Zero Cloud Cost</p>
+        </div>
+        <button id="btnCloseLocalAiModal" type="button" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <!-- Quick Setup / Status Banner -->
+      <div id="aiDaemonStatusCard" class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+            <span id="aiStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span id="aiStatusHeadline">Ollama Daemon Status: Checking...</span>
+          </div>
+          <button id="btnRefreshAiStatus" type="button" class="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white flex items-center gap-1 cursor-pointer">
+            <span>↻</span>
+            <span>Test Connection</span>
+          </button>
+        </div>
+
+        <div id="aiSetupInstructions" class="text-xs text-slate-600 dark:text-slate-300 space-y-2 pt-1 border-t border-slate-200/60 dark:border-slate-800">
+          <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            To power this with local LLM Qwen, run these 2 commands in your Mac terminal:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
+            <div class="p-2.5 rounded-xl bg-slate-950 text-emerald-400 flex items-center justify-between">
+              <span class="truncate">brew install ollama</span>
+              <button type="button" class="btn-copy-cmd ml-2 text-[10px] text-slate-400 hover:text-white cursor-pointer px-2 py-0.5 rounded bg-slate-800" data-cmd="brew install ollama">Copy</button>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950 text-emerald-400 flex items-center justify-between">
+              <span class="truncate">ollama run qwen2.5:0.5b</span>
+              <button type="button" class="btn-copy-cmd ml-2 text-[10px] text-slate-400 hover:text-white cursor-pointer px-2 py-0.5 rounded bg-slate-800" data-cmd="ollama run qwen2.5:0.5b">Copy</button>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-400">
+            ✓ Smart deterministic fallback is active — all event descriptions, insights, and answers generate instantly even when Ollama is offline.
+          </p>
+        </div>
+      </div>
+
+      <!-- Turnout Intelligence Narrative & Interactive Chat -->
+      <div class="space-y-4">
+        <!-- Live Narrative Section -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>📊</span>
+              <span>Turnout Intelligence & Security Narrative</span>
+            </span>
+            <button id="btnFetchAiNarrative" type="button" class="text-[11px] font-bold text-slate-800 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">
+              Synthesize Live Narrative
+            </button>
+          </div>
+          <div id="aiNarrativeBox" class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans min-h-[50px] flex items-center">
+            <span class="text-slate-400 italic">Click "Synthesize Live Narrative" to generate an executive AI audit of the active session.</span>
+          </div>
+        </div>
+
+        <!-- Interactive AI Chat Box -->
+        <div class="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>💬</span>
+              <span>Ask Qwen (Event Assistant)</span>
+            </span>
+            <span class="text-[10px] font-mono text-slate-400">Live Context Injected</span>
+          </div>
+
+          <!-- Quick Suggestion Chips -->
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" class="ai-chat-chip text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">
+              Draft announcement for latecomers
+            </button>
+            <button type="button" class="ai-chat-chip text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">
+              Summarize attendance velocity
+            </button>
+            <button type="button" class="ai-chat-chip text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">
+              Check for geofence breaches
+            </button>
+          </div>
+
+          <!-- Chat Conversation Log -->
+          <div id="aiChatConversation" class="h-44 overflow-y-auto space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs">
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              <span class="font-bold text-slate-900 dark:text-white block mb-0.5">🤖 Qwen AI Assistant:</span>
+              Hello! I'm your local event AI assistant. Ask me anything about turnout, announcement wording, or geofence security for this event.
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <form id="aiChatForm" class="flex gap-2">
+            <input id="aiChatInput" type="text" placeholder="e.g. Write a quick reminder to all students who checked in..." class="flex-1 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-white font-medium">
+            <button type="submit" id="btnSendAiChat" class="btn-sunset px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm cursor-pointer flex items-center gap-1 flex-shrink-0">
+              <span>Send</span>
+              <span>➤</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Model Configuration Collapsible / Drawer -->
+        <details class="text-xs pt-1">
+          <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold select-none">
+            ⚙️ Model Settings & Ollama Endpoint
+          </summary>
+          <div class="mt-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label for="aiConfigModel" class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Model Name</label>
+                <input id="aiConfigModel" type="text" value="qwen2.5:0.5b" placeholder="e.g. qwen2.5:0.5b, qwen2.5:1.5b" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono">
+              </div>
+              <div>
+                <label for="aiConfigHost" class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Ollama Host</label>
+                <input id="aiConfigHost" type="text" value="http://127.0.0.1:11434" placeholder="http://127.0.0.1:11434" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono">
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <button id="btnSaveAiConfig" type="button" class="px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold hover:opacity-90 transition-all cursor-pointer">
+                Update Model Config
+              </button>
+            </div>
+          </div>
+        </details>
+      </div>
+
     </div>
   </div>
 

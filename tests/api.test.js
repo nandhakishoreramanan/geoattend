@@ -447,6 +447,35 @@ async function runTests() {
     assert.strictEqual(res.body.suggestedRadius, 50);
   });
 
+  await test('GET /api/ai/status returns Ollama configuration and status', async () => {
+    const res = await simulateRequest('GET', '/api/ai/status');
+    assert.strictEqual(res.status, 200);
+    assert.ok(typeof res.body.connected === 'boolean');
+    assert.ok(typeof res.body.active_model === 'string');
+    assert.ok(Array.isArray(res.body.installed_models));
+  });
+
+  await test('POST /api/ai/config updates local Ollama model configuration', async () => {
+    const res = await simulateRequest('POST', '/api/ai/config', {
+      model: 'qwen2.5:0.5b'
+    });
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.success, true);
+    assert.strictEqual(res.body.active_model, 'qwen2.5:0.5b');
+  });
+
+  await test('POST /api/ai/chat returns intelligent contextual attendance answer', async () => {
+    const res = await simulateRequest('POST', '/api/ai/chat', {
+      message: 'How many attendees checked in?',
+      event_id: createdEventId
+    });
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.body.reply);
+    assert.ok(typeof res.body.reply === 'string');
+    assert.ok(res.body.reply.length > 10);
+    assert.ok(res.body.ai_provider);
+  });
+
   await test('GET /api/events/:id/export/csv exports required columns (Name, Registration ID, Email, Timestamp)', async () => {
     const res = await simulateRequest('GET', `/api/events/${createdEventId}/export/csv`);
     assert.strictEqual(res.status, 200);

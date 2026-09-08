@@ -16,6 +16,7 @@
       this.bindNav();
       this.bindGoogleAuth();
       this.bindNavDrawer();
+      this.bindLocalAiModal();
 
       // Initialize sub-controllers
       if (global.Organizer) global.Organizer.init();
@@ -188,6 +189,14 @@
           if (global.Organizer && typeof global.Organizer.exportCsv === 'function') {
             global.Organizer.exportCsv();
           }
+        });
+      }
+
+      const btnLocalAi = document.getElementById('drawerBtnLocalAi');
+      if (btnLocalAi) {
+        btnLocalAi.addEventListener('click', () => {
+          closeDrawer();
+          this.openLocalAiModal();
         });
       }
 
@@ -639,6 +648,337 @@
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
       }, 3500);
+    },
+
+    bindLocalAiModal() {
+      const modal = document.getElementById('localAiModal');
+      const btnClose = document.getElementById('btnCloseLocalAiModal');
+      const btnRefresh = document.getElementById('btnRefreshAiStatus');
+      const btnOpen = document.getElementById('btnOpenLocalAi');
+      const btnSaveConfig = document.getElementById('btnSaveAiConfig');
+      const btnNarrative = document.getElementById('btnFetchAiNarrative');
+      const chatForm = document.getElementById('aiChatForm');
+      const chatInput = document.getElementById('aiChatInput');
+
+      if (btnOpen) {
+        btnOpen.addEventListener('click', () => this.openLocalAiModal());
+      }
+
+      if (btnClose && modal) {
+        btnClose.addEventListener('click', () => this.closeLocalAiModal());
+      }
+
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) this.closeLocalAiModal();
+        });
+      }
+
+      if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+          this.checkAiStatus(true);
+        });
+      }
+
+      // Copy command buttons
+      document.querySelectorAll('.btn-copy-cmd').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const cmd = btn.getAttribute('data-cmd');
+          if (cmd) {
+            navigator.clipboard?.writeText(cmd).then(() => {
+              const prev = btn.textContent;
+              btn.textContent = 'Copied!';
+              setTimeout(() => { btn.textContent = prev; }, 1800);
+              this.showToast(`Copied to clipboard: "${cmd}"`, 'info');
+            }).catch(() => {
+              this.showToast(`Command: ${cmd}`, 'info');
+            });
+          }
+        });
+      });
+
+      // Update AI config
+      if (btnSaveConfig) {
+        btnSaveConfig.addEventListener('click', async () => {
+          const model = document.getElementById('aiConfigModel')?.value.trim() || 'qwen2.5:0.5b';
+          const host = document.getElementById('aiConfigHost')?.value.trim() || 'http://127.0.0.1:11434';
+          try {
+            btnSaveConfig.textContent = 'Saving...';
+            const res = await fetch('/api/ai/config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model, host })
+            });
+            const data = await res.json();
+            if (data.success) {
+              this.showToast(`Local AI configured: ${data.config.model}`, 'success');
+              await this.checkAiStatus(false);
+            }
+          } catch (e) {
+            this.showToast('Failed to update AI configuration', 'error');
+          } finally {
+            btnSaveConfig.textContent = 'Update Model Config';
+          }
+        });
+      }
+
+      // Fetch AI narrative
+      if (btnNarrative) {
+        btnNarrative.addEventListener('click', async () => {
+          await this.fetchEventAiNarrative();
+        });
+      }
+
+      // Suggestion chips
+      document.querySelectorAll('.ai-chat-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          if (chatInput) {
+            chatInput.value = chip.textContent.trim();
+            chatForm?.dispatchEvent(new Event('submit', { cancelable: true }));
+          }
+        });
+      });
+
+      // Chat Form submission
+      if (chatForm) {
+        chatForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const q = chatInput?.value.trim();
+          if (!q) return;
+
+          chatInput.value = '';
+          this.appendAiChatMessage('user', q);
+
+          // Get active event ID
+          const selector = document.getElementById('eventSelector');
+          const eventId = selector?.value || null;
+
+          const typingId = this.appendAiChatMessage('ai', 'Thinking with Qwen AI...', true);
+
+          try {
+            const res = await fetch('/api/ai/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ question: q, event_id: eventId })
+            });
+            const data = await res.json();
+            const reply = data.answer || data.error || 'No response generated.';
+            const modelTag = data.engine === 'ollama' ? `Qwen (${data.model})` : 'Smart Engine';
+            this.updateAiChatMessage(typingId, reply, modelTag);
+          } catch (err) {
+            this.updateAiChatMessage(typingId, 'Error connecting to AI service. Please try again.', 'Error');
+          }
+        });
+      }
+
+      // Initial check on page load
+      this.checkAiStatus(false);
+    },
+
+    openLocalAiModal() {
+      const modal = document.getElementById('localAiModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        this.checkAiStatus(false);
+      }
+    },
+
+    closeLocalAiModal() {
+      const modal = document.getElementById('localAiModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    async checkAiStatus(notify = false) {
+      try {
+        const res = await fetch('/api/ai/status');
+        const data = await res.json();
+        const isOnline = data && data.connected;
+
+        // Drawer badge
+        const drawerBadge = document.getElementById('drawerAiStatusBadge');
+        if (drawerBadge) {
+          if (isOnline) {
+            drawerBadge.textContent = 'Qwen Online';
+            drawerBadge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700';
+          } else {
+            drawerBadge.textContent = 'Fallback Mode';
+            drawerBadge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700';
+          }
+        }
+
+        // Hero badge
+        const heroBadge = document.getElementById('btnOpenLocalAiBadge');
+        if (heroBadge) {
+          heroBadge.className = isOnline
+            ? 'absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse'
+            : 'absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-900';
+        }
+
+        // Modal badge
+        const modalBadge = document.getElementById('aiModalStatusBadge');
+        if (modalBadge) {
+          if (isOnline) {
+            modalBadge.textContent = `● Ollama Online (${data.active_model})`;
+            modalBadge.className = 'text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-bold';
+          } else {
+            modalBadge.textContent = '● Ollama Daemon Offline (Fallback active)';
+            modalBadge.className = 'text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-bold';
+          }
+        }
+
+        const statusDot = document.getElementById('aiStatusDot');
+        if (statusDot) {
+          statusDot.className = isOnline
+            ? 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse'
+            : 'w-2.5 h-2.5 rounded-full bg-amber-500';
+        }
+
+        const headline = document.getElementById('aiStatusHeadline');
+        if (headline) {
+          if (isOnline) {
+            headline.textContent = `Ollama Daemon Connected • Model: ${data.active_model}`;
+          } else {
+            headline.textContent = 'Ollama Daemon Offline (Smart Heuristic Fallback Active)';
+          }
+        }
+
+        const inputModel = document.getElementById('aiConfigModel');
+        if (inputModel && data.active_model) inputModel.value = data.active_model;
+
+        const inputHost = document.getElementById('aiConfigHost');
+        if (inputHost && data.ollama_host) inputHost.value = data.ollama_host;
+
+        if (notify) {
+          if (isOnline) {
+            this.showToast(`Connected to Ollama! Active model: ${data.active_model}`, 'success');
+          } else {
+            this.showToast('Ollama daemon is offline. Running on smart built-in fallback.', 'info');
+          }
+        }
+
+        return data;
+      } catch (err) {
+        console.warn('AI status check failed:', err);
+      }
+    },
+
+    async fetchEventAiNarrative() {
+      const selector = document.getElementById('eventSelector');
+      const eventId = selector?.value;
+      const box = document.getElementById('aiNarrativeBox');
+      const btn = document.getElementById('btnFetchAiNarrative');
+
+      if (!eventId) {
+        this.showToast('Please create or select an event first!', 'warning');
+        if (box) box.innerHTML = '<span class="text-slate-400 italic">No active event found. Create an event to synthesize insights.</span>';
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Synthesizing...';
+      }
+      if (box) {
+        box.innerHTML = '<span class="text-slate-500 italic animate-pulse">Consulting Qwen AI engine with live attendance telemetry...</span>';
+      }
+
+      try {
+        const res = await fetch(`/api/events/${eventId}/ai-insights`);
+        const data = await res.json();
+        if (data && data.insights) {
+          const ins = data.insights;
+          const engineTag = data.engine === 'ollama' ? `Qwen (${data.model})` : 'Smart Engine';
+          if (box) {
+            box.innerHTML = `
+              <div class="space-y-2 w-full">
+                <div class="flex items-center justify-between text-[11px] font-bold pb-1 border-b border-slate-200 dark:border-slate-800">
+                  <span class="text-slate-900 dark:text-white">Session Analysis • ${ins.turnout_health || 'NORMAL'}</span>
+                  <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">Generated by ${engineTag}</span>
+                </div>
+                <p class="text-slate-800 dark:text-slate-200 text-xs leading-relaxed">${ins.summary_narrative || 'Attendance telemetry is steady.'}</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-[11px] font-mono">
+                  <div class="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <span class="text-[9px] text-slate-400 block uppercase">Projected Total</span>
+                    <span class="font-bold text-slate-900 dark:text-white">${ins.projected_final_turnout || 0}</span>
+                  </div>
+                  <div class="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <span class="text-[9px] text-slate-400 block uppercase">Velocity</span>
+                    <span class="font-bold text-slate-900 dark:text-white">${ins.peak_scan_velocity || 'Steady'}</span>
+                  </div>
+                  <div class="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 col-span-2 sm:col-span-1">
+                    <span class="text-[9px] text-slate-400 block uppercase">Breach Risk</span>
+                    <span class="font-bold text-slate-900 dark:text-white">${ins.anomaly_alert || 'Low'}</span>
+                  </div>
+                </div>
+                ${ins.action_recommendation ? `<p class="text-[11px] font-medium text-amber-700 dark:text-amber-400 pt-1">💡 <b>Recommendation:</b> ${ins.action_recommendation}</p>` : ''}
+              </div>
+            `;
+          }
+          this.showToast(`Turnout synthesized with ${engineTag}`, 'success');
+        } else {
+          throw new Error('Failed to retrieve insights');
+        }
+      } catch (err) {
+        console.error('Fetch AI narrative error:', err);
+        if (box) box.innerHTML = '<span class="text-rose-500 text-xs">Error generating narrative. Check connection and try again.</span>';
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Synthesize Live Narrative';
+        }
+      }
+    },
+
+    appendAiChatMessage(role, text, isTyping = false) {
+      const container = document.getElementById('aiChatConversation');
+      if (!container) return null;
+
+      const id = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      const isUser = role === 'user';
+
+      const bubble = document.createElement('div');
+      bubble.id = id;
+      bubble.className = isUser
+        ? 'p-2.5 rounded-xl bg-slate-900 text-white ml-6 text-right'
+        : 'p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 mr-6 text-slate-800 dark:text-slate-200';
+
+      const label = isUser ? 'You' : '🤖 Qwen AI';
+      bubble.innerHTML = `
+        <span class="block text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isUser ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}">${label}</span>
+        <div class="message-content text-xs whitespace-pre-wrap leading-relaxed ${isTyping ? 'animate-pulse italic text-slate-400' : ''}">${this.escapeHtml(text)}</div>
+      `;
+
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+      return id;
+    },
+
+    updateAiChatMessage(id, text, tag = '') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const contentEl = el.querySelector('.message-content');
+      if (contentEl) {
+        contentEl.classList.remove('animate-pulse', 'italic', 'text-slate-400');
+        contentEl.textContent = text;
+      }
+      if (tag) {
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'block text-[9px] font-mono text-slate-400 mt-1';
+        tagSpan.textContent = `via ${tag}`;
+        el.appendChild(tagSpan);
+      }
+      const container = document.getElementById('aiChatConversation');
+      if (container) container.scrollTop = container.scrollHeight;
+    },
+
+    escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
   };
 

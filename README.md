@@ -127,11 +127,13 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 - Whitelisted attendees automatically receive a personalized pass QR code (`PASS:eventId:email:dynamicToken`) rendered on an HTML5 canvas.
 - Includes a **1-Tap "Use My Pass & Check In"** button for immediate verification.
 
-### 3. 🧠 Smart Attendance Analytics & AI Insights
-- **Turnout Prediction**: Analyzes check-in velocity against remaining event duration.
-- **Punctuality Breakdown**: Categorizes attendees into *On-Time Arrival*, *Late Arrival*, and *Out-of-Bounds Anomalies*.
-- **Executive Natural-Language Briefing**: Automatically synthesized briefing summarizing attendance health.
-- **AI Event Description Generator**: Generates formatted seminar descriptions and recommended geofence radii from simple titles.
+### 3. 🧠 Smart Attendance Analytics & Local AI Engine (Qwen / Ollama)
+- **100% Local & Free (Zero Paid Cloud API Keys)**: Integrates directly with a local **Ollama** daemon running compact open-source models like `qwen2.5:0.5b` (~350MB, ultra-fast, minimal memory footprint) or `qwen2.5:1.5b`. Complete on-device data privacy with no attendee data sent to third-party cloud AI vendors.
+- **Graceful Deterministic Fallback**: If Ollama is not installed or offline, the engine automatically falls back to intelligent built-in heuristics, ensuring 100% functionality with zero crashes or lag.
+- **Turnout Prediction & Executive Narrative**: Generates dynamic executive briefings summarizing turnout velocity, anomaly flags, and recommendations.
+- **Punctuality & Geofence Security Auditing**: Categorizes attendees into *On-Time Arrival*, *Late Arrival*, and *Out-of-Bounds Anomalies*.
+- **Interactive Event Assistant (`POST /api/ai/chat`)**: Context-aware organizer Q&A assistant to draft latecomer announcements, turnout summaries, and security advisories.
+- **AI Event Description Generator (`POST /api/ai/generate-description`)**: Synthesizes structured seminar agendas and recommends appropriate venue geofence radii.
 
 ### 4. 🛰️ Laptop / Desktop GPS Simulator
 - Integrated presets for laptops lacking active satellite GPS:
@@ -230,6 +232,9 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 | `GET` | `/api/events/:id/export/csv` | Download attendance records in RFC 4180 CSV format | No |
 | `GET` | `/api/events/:id/ai-insights` | AI turnout forecast, punctuality score & alerts | No |
 | `POST` | `/api/ai/generate-description` | Synthesize structured event description and radius | No |
+| `GET` | `/api/ai/status` | Check local Ollama daemon status & active model | No |
+| `POST` | `/api/ai/config` | Configure Ollama model name & host endpoint | No |
+| `POST` | `/api/ai/chat` | Interactive contextual Qwen AI event assistant | No |
 
 ---
 
@@ -361,6 +366,9 @@ The project includes an end-to-end automated testing suite with **100% test pass
   ✓ GET /api/events/:id/stats aggregates live metrics
   ✓ GET /api/events/:id/ai-insights returns AI analytics & forecast
   ✓ POST /api/ai/generate-description generates smart event content
+  ✓ GET /api/ai/status returns Ollama configuration and status
+  ✓ POST /api/ai/config updates local Ollama model configuration
+  ✓ POST /api/ai/chat returns intelligent contextual attendance answer
   ✓ GET /api/events/:id/export/csv exports required columns (Name, Registration ID, Email, Timestamp)
 
 [6/6] Testing Frontend Single Page Application & Static Assets...
@@ -370,7 +378,7 @@ The project includes an end-to-end automated testing suite with **100% test pass
   ✓ GET /js/qr-scanner.js serves robust scanner with dynamic engine fallback
 
 ======================================================
-  TEST RESULTS: 35 PASSED, 0 FAILED
+  TEST RESULTS: 38 PASSED, 0 FAILED
 ======================================================
 ```
 

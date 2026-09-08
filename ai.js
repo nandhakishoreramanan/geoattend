@@ -1,21 +1,117 @@
 /**
  * AI Assistant & Smart Attendance Analytics Engine
- * Provides:
- *  1. Smart Attendance Insights & Turnout Forecast
- *  2. Proxy Anomaly & Geofence Integrity Detection
- *  3. Automated Event Description & Agenda Generator
- *  4. Natural-Language Event Search & Smart Recommendations
+ * Powered by Local LLM (Ollama / Qwen) with ZERO external API keys and 100% data privacy.
+ *
+ * Supported Local Models:
+ *  - qwen2.5:0.5b (Ultra-fast, ~350MB, runs in seconds on any Mac/PC)
+ *  - qwen2.5:1.5b (Fast, ~1GB, rich reasoning)
+ *  - qwen2.5 / qwen:7b / llama3 / mistral / gemma2
+ *
+ * Architecture:
+ *  - Native local HTTP connection to Ollama (http://127.0.0.1:11434)
+ *  - Fast abort controller (1.2s timeout for status, 3.5s for generation)
+ *  - Automatic heuristic fallback when Ollama is offline or uninstalled
+ *  - Zero external npm packages required (pure Node 22 fetch)
  */
 
-const crypto = require('node:crypto');
+let OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
+let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
+
+/**
+ * Check if local Ollama daemon is running and detect installed models
+ */
+async function getOllamaStatus() {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const models = (data.models || []).map(m => m.name);
+      const isModelInstalled = models.some(m => m.startsWith(ACTIVE_MODEL.split(':')[0]));
+      return {
+        connected: true,
+        host: OLLAMA_HOST,
+        active_model: ACTIVE_MODEL,
+        installed_models: models,
+        model_ready: isModelInstalled || models.length > 0,
+        suggested_model: models[0] || ACTIVE_MODEL
+      };
+    }
+  } catch (e) {}
+
+  return {
+    connected: false,
+    host: OLLAMA_HOST,
+    active_model: ACTIVE_MODEL,
+    installed_models: [],
+    model_ready: false,
+    instructions: {
+      step1: 'Install Ollama: brew install ollama (or download from https://ollama.com)',
+      step2: `Pull lightweight Qwen model: ollama run ${ACTIVE_MODEL}`,
+      step3: 'Ollama runs locally on port 11434 with zero external API keys needed!'
+    }
+  };
+}
+
+/**
+ * Configure local Ollama host or model name
+ */
+function setOllamaConfig(config = {}) {
+  if (config.host && typeof config.host === 'string') {
+    OLLAMA_HOST = config.host.replace(/\/+$/, '');
+  }
+  if (config.model && typeof config.model === 'string') {
+    ACTIVE_MODEL = config.model.trim();
+  }
+  return { host: OLLAMA_HOST, model: ACTIVE_MODEL };
+}
+
+/**
+ * Call local Ollama generate endpoint with safe timeout and fallback
+ */
+async function callLocalOllama(prompt, systemPrompt = '', timeoutMs = 3500) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const res = await fetch(`${OLLAMA_HOST}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: ACTIVE_MODEL,
+        prompt: prompt,
+        system: systemPrompt,
+        stream: false,
+        options: {
+          temperature: 0.6,
+          top_p: 0.9,
+          num_predict: 256
+        }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.response) {
+        return data.response.trim();
+      }
+    }
+  } catch (e) {
+    // Offline or timed out - gracefully handled
+  }
+  return null;
+}
 
 /**
  * Generate Smart Attendance Insights & Forecast
- * @param {object} event 
- * @param {Array} attendees 
- * @param {object} metrics 
+ * Combines mathematical telemetry calculations with local Qwen executive summaries.
  */
-function generateAttendanceInsights(event, attendees, metrics) {
+async function generateAttendanceInsights(event, attendees, metrics = {}) {
   const total = attendees.length;
   const verified = attendees.filter(a => a.status === 'VERIFIED').length;
   const outOfBounds = attendees.filter(a => a.status === 'OUT_OF_BOUNDS').length;
@@ -33,7 +129,6 @@ function generateAttendanceInsights(event, attendees, metrics) {
   // Predictive turnout forecast model
   let projectedTurnout = total;
   if (remainingMin > 0 && elapsedMin < totalDurationMin) {
-    // Diminishing velocity factor as event progresses
     const decayFactor = Math.max(0.2, 1 - (elapsedMin / totalDurationMin));
     const projectedAdditional = Math.round(velocity * remainingMin * decayFactor);
     projectedTurnout = total + projectedAdditional;
@@ -65,11 +160,11 @@ function generateAttendanceInsights(event, attendees, metrics) {
   // Punctuality Analysis
   const onTimeAttendees = attendees.filter(a => {
     const t = new Date(a.checkin_time).getTime();
-    return (t - startTime) <= 15 * 60000; // within first 15 mins
+    return (t - startTime) <= 15 * 60000;
   }).length;
   const punctualityRate = total > 0 ? Math.round((onTimeAttendees / total) * 100) : 100;
 
-  // Natural Language AI Executive Summary
+  // Base deterministic summary
   let summaryText = `Attendance for "${event.title}" is currently running at a ${healthScore}/100 Health Score. `;
   summaryText += `A total of ${total} attendees have scanned in with an average distance of ${metrics.avgDistance || 0}m from the venue center. `;
   if (complianceRate >= 90) {
@@ -79,25 +174,52 @@ function generateAttendanceInsights(event, attendees, metrics) {
   }
   summaryText += `Projected final turnout is approximately ${projectedTurnout} participants.`;
 
+  // Attempt local Qwen executive synthesis
+  let qwenSummary = null;
+  const prompt = `Event: "${event.title}" at ${event.venue_name || 'Campus'}. Total check-ins: ${total}, Verified on-site: ${verified}, Out-of-bounds attempts: ${outOfBounds}, Allowed radius: ${event.radius_meters}m. Health score: ${healthScore}/100. Write a 2-sentence executive summary with 1 operational recommendation.`;
+  const systemPrompt = `You are GeoAttend AI, an attendance analyst running locally on Qwen/Ollama. Provide direct, professional, concise insights without preamble.`;
+
+  qwenSummary = await callLocalOllama(prompt, systemPrompt, 2500);
+
   return {
     healthScore,
     projectedTurnout,
     velocityPerMinute: velocity,
     punctualityRate,
     anomalies,
-    executiveSummary: summaryText,
+    executiveSummary: (qwenSummary && qwenSummary.length > 25) ? qwenSummary : summaryText,
     recommendations: [
       complianceRate < 85 ? `Consider expanding geofence radius to ${event.radius_meters + 25}m if the hall has weak GPS reception.` : `Geofence radius of ${event.radius_meters}m is optimal.`,
       `Dynamic QR rotation is successfully preventing proxy attendance attempts.`,
       remainingMin > 0 ? `Expected peak arrival window has concluded; steady check-ins continuing.` : `Event has concluded. All records sealed for audit.`
-    ]
+    ],
+    ai_provider: qwenSummary ? `ollama/${ACTIVE_MODEL}` : 'deterministic_heuristic'
   };
 }
 
 /**
  * AI Automated Event Description & Agenda Generator
+ * Uses local Qwen when running, with instant deterministic templates as backup.
  */
-function generateEventDescription(title, venue, category = 'academic') {
+async function generateEventDescription(title, venue, category = 'academic') {
+  const suggestedRadius = category === 'hackathon' ? 120 : (category === 'workshop' ? 50 : 80);
+
+  // Try local Qwen model first
+  const prompt = `Write an engaging, professional 2-sentence description for a university ${category} event titled "${title}" hosted at "${venue}". Mention that attendance is verified via anti-proxy geofenced QR.`;
+  const systemPrompt = `You are a university event coordinator assistant for SRM Institute of Science and Technology. Return only the event description text, no preamble or quotes.`;
+
+  const qwenText = await callLocalOllama(prompt, systemPrompt, 3000);
+
+  if (qwenText && qwenText.length > 20) {
+    return {
+      description: qwenText,
+      suggestedRadius,
+      tags: [category, 'qwen-local-ai', 'geo-verified', 'srm-campus'],
+      ai_provider: `ollama/${ACTIVE_MODEL}`
+    };
+  }
+
+  // Fallback to built-in template
   const templates = {
     academic: [
       `Join faculty and researchers at ${venue} for an in-depth session on "${title}". This session dives deep into theoretical foundations, practical case studies, and live demonstrations. Attendance is geo-verified on arrival.`,
@@ -117,8 +239,46 @@ function generateEventDescription(title, venue, category = 'academic') {
 
   return {
     description: desc,
-    suggestedRadius: category === 'hackathon' ? 120 : (category === 'workshop' ? 50 : 80),
-    tags: [category, 'attendance-verified', 'on-site', 'srm-campus']
+    suggestedRadius,
+    tags: [category, 'attendance-verified', 'on-site', 'srm-campus'],
+    ai_provider: 'deterministic_template'
+  };
+}
+
+/**
+ * Interactive Natural-Language Event Organizer Assistant
+ * Answers queries like "Who arrived late?", "Any proxy attempts?", "Draft an announcement".
+ */
+async function askEventAssistant(question, event = {}, attendees = [], stats = {}) {
+  const verified = attendees.filter(a => a.status === 'VERIFIED').length;
+  const outOfBounds = attendees.filter(a => a.status === 'OUT_OF_BOUNDS').length;
+
+  const context = `
+Event Title: "${event.title || 'General Event'}"
+Venue: ${event.venue_name || 'SRM Campus'}
+Geofence Radius: ${event.radius_meters || 80}m
+Total Attendees Scanned: ${attendees.length}
+Verified On-Site: ${verified}
+Out-of-Bounds Attempts: ${outOfBounds}
+Average Check-in Distance: ${stats?.metrics?.avgDistance || 0}m
+`;
+
+  const prompt = `Context:\n${context}\n\nOrganizer Question: ${question}\n\nProvide a concise, helpful answer based on the context.`;
+  const systemPrompt = `You are GeoAttend AI, a local assistant running on Qwen via Ollama. Help university organizers manage attendance accurately and securely.`;
+
+  const reply = await callLocalOllama(prompt, systemPrompt, 4000);
+
+  if (reply && reply.length > 10) {
+    return {
+      reply,
+      ai_provider: `ollama/${ACTIVE_MODEL}`
+    };
+  }
+
+  // Fallback heuristic response
+  return {
+    reply: `[Statistical Assistant] For "${event.title || 'Selected Event'}": ${attendees.length} total check-in(s) recorded (${verified} verified on-site, ${outOfBounds} out of bounds). Average attendee distance is ${stats?.metrics?.avgDistance || 0}m. (To enable full conversational Qwen AI, run 'ollama run qwen2.5:0.5b' in your terminal!)`,
+    ai_provider: 'deterministic_fallback'
   };
 }
 
@@ -148,7 +308,11 @@ function searchEventsNaturalLanguage(query, events) {
 }
 
 module.exports = {
+  getOllamaStatus,
+  setOllamaConfig,
+  callLocalOllama,
   generateAttendanceInsights,
   generateEventDescription,
+  askEventAssistant,
   searchEventsNaturalLanguage
 };

@@ -211,6 +211,71 @@
       if (btnUseMyLoc) {
         btnUseMyLoc.addEventListener('click', () => this.setCreateEventToCurrentGPS());
       }
+
+      // AI Draft Description Button (Local Qwen / Fallback)
+      const btnAiDraftDesc = document.getElementById('btnAiDraftDesc');
+      if (btnAiDraftDesc) {
+        btnAiDraftDesc.addEventListener('click', async () => {
+          const titleInput = document.getElementById('newEventTitle');
+          const venueInput = document.getElementById('newEventVenue');
+          const descInput = document.getElementById('newEventDesc');
+          const statusDiv = document.getElementById('aiDraftStatus');
+
+          const title = titleInput?.value.trim();
+          const venue = venueInput?.value.trim();
+
+          if (!title || !venue) {
+            window.App?.showToast('Please enter an Event Title and Venue first!', 'warning');
+            titleInput?.focus();
+            return;
+          }
+
+          const originalText = btnAiDraftDesc.innerHTML;
+          btnAiDraftDesc.disabled = true;
+          btnAiDraftDesc.innerHTML = '<span>⏳</span><span>Drafting...</span>';
+          if (statusDiv) {
+            statusDiv.classList.remove('hidden');
+            statusDiv.textContent = 'Generating description with Local Qwen AI...';
+          }
+
+          try {
+            const res = await fetch('/api/ai/generate-description', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title, venue })
+            });
+            const data = await res.json();
+            if (data && data.description) {
+              if (descInput) descInput.value = data.description;
+              if (data.suggested_radius && radiusSlider && radiusVal) {
+                radiusSlider.value = data.suggested_radius;
+                radiusVal.textContent = `${data.suggested_radius}m`;
+                if (this.createMapVisualizer) {
+                  this.createMapVisualizer.updateVenue(
+                    parseFloat(document.getElementById('newEventLat')?.value || 12.82315),
+                    parseFloat(document.getElementById('newEventLng')?.value || 80.04420),
+                    data.suggested_radius
+                  );
+                }
+              }
+              const modelTag = data.engine === 'ollama' ? `Qwen (${data.model})` : 'Smart Engine';
+              window.App?.showToast(`✨ Event description synthesized via ${modelTag}!`, 'success');
+              if (statusDiv) {
+                statusDiv.textContent = `✓ Generated via ${modelTag}`;
+                setTimeout(() => statusDiv.classList.add('hidden'), 3500);
+              }
+            } else {
+              throw new Error(data.error || 'Failed to generate description');
+            }
+          } catch (err) {
+            console.error('AI Draft Error:', err);
+            window.App?.showToast('Could not reach AI engine. Using local fallback.', 'warning');
+          } finally {
+            btnAiDraftDesc.disabled = false;
+            btnAiDraftDesc.innerHTML = originalText;
+          }
+        });
+      }
     },
 
     async loadEvents() {
