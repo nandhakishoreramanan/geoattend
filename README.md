@@ -2,11 +2,12 @@
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 35 Passed](https://img.shields.io/badge/Tests-35%2F35%20Passing-emerald.svg)](tests/api.test.js)
+[![Tests: 41 Passed](https://img.shields.io/badge/Tests-41%2F41%20Passing-emerald.svg)](tests/api.test.js)
+[![AI Engine: Qwen 2.5 3B / Ollama](https://img.shields.io/badge/AI-Qwen%202.5%203B%20%7C%20Ollama-blueviolet.svg)](ai.js)
 [![Architecture: Zero External Dependencies](https://img.shields.io/badge/Dependencies-0%20External%20NPM-purple.svg)](package.json)
 [![Database: SQLite WAL](https://img.shields.io/badge/Database-SQLite%20WAL-blue.svg)](db.js)
 
-> A full-stack, enterprise-grade attendance management system combining **dynamic HMAC-rotating QR codes**, **high-precision Haversine geofencing ($d \le R$)**, **cryptographically enforced Google OAuth 2.0 authentication**, **organizer-restricted Gmail whitelist gatekeeping**, **real-time Server-Sent Events (SSE) telemetry**, **downloadable audit reports**, and an **AI-powered attendance analytics engine**.
+> A full-stack, enterprise-grade attendance management system combining **dynamic HMAC-rotating QR codes**, **high-precision Haversine geofencing ($d \le R$)**, **cryptographically enforced Google OAuth 2.0 authentication**, **organizer-restricted Gmail whitelist gatekeeping**, **real-time Server-Sent Events (SSE) telemetry**, **downloadable audit reports**, and a **local Qwen 2.5 3B AI intelligence engine**.
 >
 > Built with pure native Node.js (`node:http`, `node:crypto`, `node:sqlite`), zero external npm frameworks, and strictly zero Supabase / Firebase dependencies.
 
@@ -15,7 +16,7 @@
 ## 📑 Table of Contents
 - [System Architecture](#-system-architecture)
 - [Features Implemented](#-features-implemented)
-- [Additional Features Added](#-additional-features-added-bonus-)
+- [Additional Features Added (Bonus ⭐)](#-additional-features-added-bonus-)
 - [Important Implementation Decisions](#-important-implementation-decisions)
 - [Concepts Learned](#-concepts-learned)
 - [API Reference](#-api-reference)
@@ -40,6 +41,7 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 │  │  - 20s Dynamic QR Projector     │ │  - High-Accuracy GPS Acquire   │  │
 │  │  - Whitelist Management Modal   │ │  - WebRTC Camera / Upload QR   │  │
 │  │  - AI Insights & CSV Export     │ │  - Personal Digital Pass (QR)  │  │
+│  │  - Event Scheduler & Categories │ │  - AI Semantic Search & Recs   │  │
 │  └─────────────────────────────────┘ └────────────────────────────────┘  │
 └────────────────────────────────────┬─────────────────────────────────────┘
                                      │ HTTP REST + SSE Stream
@@ -61,7 +63,11 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 │  │  - Breach Distance & Boundary Compliance Calculator                │  │
 │  ├────────────────────────────────────────────────────────────────────┤  │
 │  │  AI Analytics & Synthesis Engine (ai.js)                           │  │
+│  │  - Qwen 2.5 3B Local LLM (~3.4B params, Metal GPU accelerated)    │  │
+│  │  - Natural-Language Semantic Event Search & Query Intent           │  │
+│  │  - Personalized Event Recommendations (Match % & Rationale)        │  │
 │  │  - Turnout Prediction, Punctuality Scoring & Anomaly Alerts        │  │
+│  │  - Contextual Campus AI Concierge (Attendee Q&A & Organizer Audit) │  │
 │  │  - Structured Event Description & Agenda Synthesizer               │  │
 │  └────────────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────┬─────────────────────────────────────┘
@@ -69,7 +75,7 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 ┌────────────────────────────────────▼─────────────────────────────────────┐
 │                   LOCAL SQLITE DATABASE (attendance.db)                  │
 │  - users (id, email, google_id, name, avatar_url, role, password_hash)    │
-│  - events (id, title, venue, lat, lng, radius, secret, allowed_emails)   │
+│  - events (id, title, venue, category, start_time, end_time, lat, lng...) │
 │  - attendees (id, event_id, name, student_id, email, dist, status, hash)  │
 │  - audit_logs (id, event_id, action, details, timestamp)                 │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -79,10 +85,9 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 
 ## ✨ Features Implemented
 
-### 1. 📅 Upcoming Campus Events Catalog
-- **Live Event Grid**: Displays event title, venue name, scheduled date & time, static code badge, and dynamic geofence radius.
-- **Natural Language Search**: Real-time fuzzy and semantic search across titles, venues, and descriptions.
-- **Instant Synchronization**: When an event is created in the Organizer Portal, it immediately appears in the Attendee catalog across all clients without a page refresh.
+### 1. 📅 Upcoming Campus Events Display with Comprehensive Details
+- **Full Event Information**: Every event displays its **Name**, **Venue**, formatted **Date** (e.g. `Sep 15, 2026`), **Time Range** (e.g. `09:30 AM – 12:30 PM`), **Track/Category badge** (e.g. `💻 Tech / AI`, `⚡ Hackathon`, `🛠️ Workshop`, `🎓 Seminar`), **Geofence Radius** (e.g. `📍 50m radius`), **Dynamic/Static QR type**, and **Whitelist Entry Status** (`🔒 Whitelisted` or `🌐 Open Entry`).
+- **Instant Synchronization**: When an organizer creates a new event with schedule and track details, it immediately displays in the Attendee catalog across all clients without a reload.
 
 ### 2. 🛡️ Anti-Proxy Dynamic QR Code Engine
 - **Time-Sliced HMAC Generation**: Projects time-based cryptographic tokens (`GEO:eventId:timeSlice:signature`) refreshing every **20 seconds**.
@@ -115,7 +120,26 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 
 ## 🌟 Additional Features Added (Bonus ⭐)
 
-### 1. 🔒 Strict Google OAuth 2.0 Security & Whitelist Gatekeeper
+### 1. 🤖 Local Qwen 2.5 3B AI Engine (Ollama on Apple Silicon M1)
+- **100% On-Device Privacy • No Paid Cloud API Keys**: Runs local inference via **Ollama** using `qwen2.5:3b` (~3.4B parameters, ~1.9GB) accelerated by Apple Silicon Metal GPU (~45-60 tokens/sec on MacBook Air M1). Supports hot-swapping to `qwen2.5:0.5b` (~350MB) for ultra-low latency.
+- **Zero-Cloud-Cost Guarantee**: All natural language queries, summaries, recommendations, and security audits run 100% on localhost. No OpenAI or cloud API bills.
+- **Smart Deterministic Fallback**: If the local Ollama daemon is offline, a built-in deterministic heuristic engine automatically provides 100% uptime with zero crashes or error states.
+
+### 2. 🔍 Natural-Language Semantic Event Search (`POST /api/ai/search-events`)
+- Plain English search queries (e.g., *"morning hackathons in TP Ganesan"*, *"hands-on robotics lab"*, *"afternoon workshops"*).
+- The AI extracts search intent, filters matching events semantically, and returns an explanation of why the events were matched.
+- Includes 1-tap interactive preset prompt chips in the UI (*Morning tech*, *Hackathons*, *TP Ganesan*).
+
+### 3. ⭐ Personalized Event Recommendations (`POST /api/ai/recommendations`)
+- Analyzes an attendee's verified check-in history and academic tracks to recommend relevant upcoming sessions.
+- Generates a **Match Percentage** (e.g. `⭐ 95% Match`) and personalized AI **rationale** explaining why the event fits their profile.
+- Includes a 1-tap "Check in Pass" button to immediately focus and activate the recommended session.
+
+### 4. 💬 Campus AI Concierge / Assistant (`POST /api/ai/chat`)
+- Contextual dual-mode assistant for both organizers (turnout velocity, attendance velocity, geofence breach analysis, announcement drafting) and attendees (venue directions, pass requirements, schedule inquiries).
+- Live context of scheduled events, attendee records, and geofence parameters are injected into the prompt.
+
+### 5. 🔒 Strict Google OAuth 2.0 Security & Whitelist Gatekeeper
 - **Official Google Redirection**: Direct redirect to `accounts.google.com/o/oauth2/v2/auth` via native authorization code exchange.
 - **No Manual Email Typing**: The attendee email field is permanently `readonly`. Attendees cannot type, fake, or spoof emails.
 - **Organizer Whitelist Enforcement**: Organizers specify allowed attendee Gmails per event. The backend gatekeeper (`GET /api/events/:id/my-pass`) verifies the user's Google JWT:
@@ -123,19 +147,11 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
   - Non-whitelisted users are rejected with HTTP 403 `Access Denied`.
 - **Anti-Account Hijacking**: If an attendee scans another student's pass, the system detects the email mismatch and raises a security warning.
 
-### 2. 🎟️ Personal Digital Attendance Pass (1-Tap Check-In)
+### 6. 🎟️ Personal Digital Attendance Pass (1-Tap Check-In)
 - Whitelisted attendees automatically receive a personalized pass QR code (`PASS:eventId:email:dynamicToken`) rendered on an HTML5 canvas.
 - Includes a **1-Tap "Use My Pass & Check In"** button for immediate verification.
 
-### 3. 🧠 Smart Attendance Analytics & Local AI Engine (Qwen / Ollama)
-- **100% Local & Free (Zero Paid Cloud API Keys)**: Integrates directly with a local **Ollama** daemon running compact open-source models like `qwen2.5:0.5b` (~350MB, ultra-fast, minimal memory footprint) or `qwen2.5:1.5b`. Complete on-device data privacy with no attendee data sent to third-party cloud AI vendors.
-- **Graceful Deterministic Fallback**: If Ollama is not installed or offline, the engine automatically falls back to intelligent built-in heuristics, ensuring 100% functionality with zero crashes or lag.
-- **Turnout Prediction & Executive Narrative**: Generates dynamic executive briefings summarizing turnout velocity, anomaly flags, and recommendations.
-- **Punctuality & Geofence Security Auditing**: Categorizes attendees into *On-Time Arrival*, *Late Arrival*, and *Out-of-Bounds Anomalies*.
-- **Interactive Event Assistant (`POST /api/ai/chat`)**: Context-aware organizer Q&A assistant to draft latecomer announcements, turnout summaries, and security advisories.
-- **AI Event Description Generator (`POST /api/ai/generate-description`)**: Synthesizes structured seminar agendas and recommends appropriate venue geofence radii.
-
-### 4. 🛰️ Laptop / Desktop GPS Simulator
+### 7. 🛰️ Laptop / Desktop GPS Simulator
 - Integrated presets for laptops lacking active satellite GPS:
   - `Inside Venue (~14m away)`
   - `Geofence Boundary (~65m away)`
@@ -235,6 +251,8 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 | `GET` | `/api/ai/status` | Check local Ollama daemon status & active model | No |
 | `POST` | `/api/ai/config` | Configure Ollama model name & host endpoint | No |
 | `POST` | `/api/ai/chat` | Interactive contextual Qwen AI event assistant | No |
+| `POST` | `/api/ai/search-events` | Semantic natural-language event search via Qwen 2.5 3B | No |
+| `POST` | `/api/ai/recommendations` | Personalized event recommendations with Match % & rationale | No |
 
 ---
 
