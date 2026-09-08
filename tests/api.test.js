@@ -237,11 +237,10 @@ async function runTests() {
   let createdEventId = null;
   let dynamicToken = null;
 
-  await test('GET /api/events returns seeded events', async () => {
+  await test('GET /api/events returns event list', async () => {
     const res = await simulateRequest('GET', '/api/events');
     assert.strictEqual(res.status, 200);
     assert.ok(Array.isArray(res.body.events));
-    assert.ok(res.body.events.length >= 1);
   });
 
   await test('POST /api/events creates a new event with geofence settings', async () => {

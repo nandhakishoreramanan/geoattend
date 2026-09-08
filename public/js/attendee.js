@@ -109,7 +109,12 @@
       if (!eventId) {
         authCard?.classList.add('hidden');
         deniedCard?.classList.add('hidden');
-        unauthCard?.classList.add('hidden');
+        unauthCard?.classList.remove('hidden');
+        this.activePersonalToken = null;
+        const unauthTitle = unauthCard?.querySelector('h4');
+        const unauthDesc = unauthCard?.querySelector('p');
+        if (unauthTitle) unauthTitle.textContent = 'No Event Selected';
+        if (unauthDesc) unauthDesc.textContent = 'Create or select an upcoming event above to view your entry pass.';
         return;
       }
 
@@ -293,13 +298,16 @@
 
         // Keep current selected event if it still exists, otherwise select the first event
         const stillExists = this.eventsList.find(e => e.id === this.selectedEventId);
-        if (!stillExists && this.eventsList.length > 0) {
-          this.selectedEventId = this.eventsList[0].id;
+        if (!stillExists) {
+          this.selectedEventId = this.eventsList.length > 0 ? this.eventsList[0].id : null;
         }
 
         if (this.eventsList.length > 0 && this.selectedEventId) {
           const target = this.eventsList.find(e => e.id === this.selectedEventId) || this.eventsList[0];
           await this.selectEvent(target, false);
+        } else {
+          this.selectedEventId = null;
+          await this.refreshPassCard();
         }
       } catch (err) {
         console.error('Failed to load upcoming events:', err);
@@ -311,7 +319,12 @@
       if (!container) return;
 
       if (events.length === 0) {
-        container.innerHTML = '<div class="text-sm text-slate-500 col-span-full py-4 text-center">No upcoming events found.</div>';
+        container.innerHTML = `
+          <div class="col-span-full py-10 px-4 text-center rounded-xl bg-slate-900/40 border border-slate-800">
+            <p class="text-sm font-semibold text-slate-300">No events scheduled yet</p>
+            <p class="text-xs text-slate-500 mt-1">Events created in the Organizer portal will appear here automatically.</p>
+          </div>
+        `;
         return;
       }
 
