@@ -1,21 +1,22 @@
 /*
  * QR-Based Geo-Tagged Attendance Management System - Stylesheet
- * Modern Glassmorphism, Dark/Light palettes, Scanner HUD, and Print Layouts
+ * BLITZ-Inspired Editorial Bento Architecture: Off-white canvas, soft peach sunset buttons,
+ * holographic visor badges, high-contrast typography, Scanner HUD, and Print Layouts.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
+  --primary: #0f172a;
+  --primary-hover: #1e293b;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --bg-dark: #0f172a;
-  --card-dark: #1e293b;
-  --border-dark: #334155;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
+  --canvas-bg: #e6e9f0;
+  --card-bg: #ffffff;
+  --card-border: rgba(15, 23, 42, 0.09);
+  --text-main: #0a0d14;
+  --text-muted: #64748b;
 }
 
 * {
@@ -26,7 +27,7 @@
 
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #090d16;
+  background-color: var(--canvas-bg);
   color: var(--text-main);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -36,31 +37,87 @@ code, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Glassmorphism Containers */
+/* BLITZ Bento Box Modular Cards */
+.bento-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 1.75rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.03);
+}
+
+.bento-subcard {
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 1.25rem;
+}
+
+/* Backward-compatible glass aliases */
 .glass-panel {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  border-radius: 1.75rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.03);
 }
 
 .glass-card {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 1.25rem;
 }
 
-/* Glow effects */
-.glow-primary {
-  box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.4);
+/* Signature Sunset Gradient Pill Button (BLITZ "Get in touch" style) */
+.btn-sunset {
+  background: linear-gradient(135deg, #ffd3c4 0%, #fbcfe8 50%, #fed7aa 100%);
+  color: #0f172a;
+  font-weight: 800;
+  border-radius: 9999px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px 0 rgba(253, 186, 116, 0.35);
 }
-.glow-success {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.4);
+
+.btn-sunset:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px 0 rgba(253, 186, 116, 0.45);
 }
-.glow-danger {
-  box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.4);
+
+.btn-sunset:active {
+  transform: translateY(0);
+}
+
+/* Circular Icon Action Button (Next to sunset pill) */
+.btn-circle-action {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f172a;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-circle-action:hover {
+  background: #f1f5f9;
+  border-color: rgba(15, 23, 42, 0.3);
+  transform: scale(1.04);
+}
+
+/* Holographic Visor Badge (Futuristic Pastel Eyewear in Reference Photo) */
+.visor-badge {
+  background: linear-gradient(135deg, #ffc3a0 0%, #ffafbd 40%, #7ee8fa 100%);
+  color: #0f172a;
+  font-weight: 800;
+  border-radius: 9999px;
+  box-shadow: 0 4px 15px -2px rgba(255, 175, 189, 0.4);
+}
+
+/* Geometric Wireframe Grid (3D Arc Pattern in Reference Photo) */
+.geo-grid-pattern {
+  background-image: radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.08) 0, transparent 65%),
+                    radial-gradient(circle at 0% 0%, rgba(15, 23, 42, 0.04) 0, transparent 50%);
 }
 
 /* Radar & Reticle Animations */
@@ -112,10 +169,11 @@ code, .font-mono {
 /* Digital Attendance Pass Ticket */
 .ticket-card {
   position: relative;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 1.5rem;
   overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05);
 }
 
 .ticket-card::before, .ticket-card::after {
@@ -123,7 +181,7 @@ code, .font-mono {
   position: absolute;
   width: 24px;
   height: 24px;
-  background: #090d16;
+  background: var(--canvas-bg);
   border-radius: 50%;
   top: 55%;
   z-index: 10;
@@ -131,16 +189,16 @@ code, .font-mono {
 
 .ticket-card::before {
   left: -12px;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 .ticket-card::after {
   right: -12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 .ticket-notch-line {
-  border-top: 2px dashed rgba(255, 255, 255, 0.15);
+  border-top: 2px dashed rgba(15, 23, 42, 0.15);
   margin: 1.5rem 0;
 }
 

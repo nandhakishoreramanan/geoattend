@@ -567,7 +567,7 @@
       if (filtered.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" class="text-center py-8 text-slate-500">
+            <td colspan="7" class="text-center py-8 text-slate-500 font-medium">
               No attendee records found matching the criteria.
             </td>
           </tr>
@@ -577,35 +577,35 @@
 
       filtered.forEach(a => {
         const tr = document.createElement('tr');
-        tr.className = 'border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors text-sm';
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 transition-colors text-xs font-medium text-slate-800';
 
         const isVerified = a.status === 'VERIFIED';
         const badgeClass = isVerified
-          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-          : 'bg-rose-500/20 text-rose-400 border-rose-500/30';
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : 'bg-rose-50 text-rose-700 border-rose-200';
 
         const timeFormatted = new Date(a.checkin_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         tr.innerHTML = `
-          <td class="py-3 px-4 font-mono font-medium text-slate-300">${a.student_id}</td>
-          <td class="py-3 px-4 font-semibold text-white">${a.name}</td>
-          <td class="py-3 px-4 text-slate-400 font-mono text-xs">${timeFormatted}</td>
+          <td class="py-3 px-4 font-mono font-semibold text-slate-600">${a.student_id}</td>
+          <td class="py-3 px-4 font-bold text-slate-950">${a.name}</td>
+          <td class="py-3 px-4 text-slate-500 font-mono text-[11px]">${timeFormatted}</td>
           <td class="py-3 px-4 font-mono">
-            <span class="${isVerified ? 'text-blue-400' : 'text-rose-400'} font-semibold">${a.distance_meters}m</span>
+            <span class="${isVerified ? 'text-slate-900 font-black' : 'text-rose-600 font-black'}">${a.distance_meters}m</span>
           </td>
           <td class="py-3 px-4">
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${badgeClass}">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badgeClass}">
               ${a.status}
             </span>
           </td>
-          <td class="py-3 px-4 text-xs text-slate-400 max-w-xs truncate">${a.notes || ''}</td>
+          <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${a.notes || ''}</td>
           <td class="py-3 px-4 text-right">
             ${isVerified ? `
-              <button onclick="Organizer.overrideAttendee('${a.id}', 'OUT_OF_BOUNDS')" class="text-xs text-slate-400 hover:text-rose-400 transition-colors px-2 py-1 rounded bg-slate-800/60 hover:bg-rose-500/10 border border-slate-700">
+              <button onclick="Organizer.overrideAttendee('${a.id}', 'OUT_OF_BOUNDS')" class="text-[11px] text-rose-600 hover:text-rose-700 font-bold px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer">
                 Revoke
               </button>
             ` : `
-              <button onclick="Organizer.overrideAttendee('${a.id}', 'VERIFIED')" class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30">
+              <button onclick="Organizer.overrideAttendee('${a.id}', 'VERIFIED')" class="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer">
                 Approve
               </button>
             `}
@@ -928,10 +928,10 @@
 
           if (chipsContainer) {
             if (!data.allowed_emails || data.allowed_emails.length === 0) {
-              chipsContainer.innerHTML = '<span class="text-slate-500 text-xs italic">No emails whitelisted yet. (Open to all attendees)</span>';
+              chipsContainer.innerHTML = '<span class="text-slate-400 text-xs italic font-medium">No emails whitelisted yet. (Open to all attendees)</span>';
             } else {
               chipsContainer.innerHTML = data.allowed_emails.map(email => `
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-mono">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950 text-white text-[11px] font-mono shadow-sm">
                   <span>${email}</span>
                 </span>
               `).join('');

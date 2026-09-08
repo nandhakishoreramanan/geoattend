@@ -365,10 +365,10 @@
         organizerPortal?.classList.remove('hidden');
         attendeePortal?.classList.add('hidden');
 
-        btnOrg?.classList.add('bg-blue-600', 'text-white', 'shadow-md');
-        btnOrg?.classList.remove('text-slate-400');
-        btnAtt?.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-        btnAtt?.classList.add('text-slate-400');
+        btnOrg?.classList.add('bg-slate-950', 'text-white', 'shadow-sm');
+        btnOrg?.classList.remove('text-slate-600');
+        btnAtt?.classList.remove('bg-slate-950', 'text-white', 'shadow-sm');
+        btnAtt?.classList.add('text-slate-600');
 
         // Stop attendee camera if running
         if (global.Attendee) global.Attendee.stopLiveScanner();
@@ -381,10 +381,10 @@
         organizerPortal?.classList.add('hidden');
         attendeePortal?.classList.remove('hidden');
 
-        btnAtt?.classList.add('bg-blue-600', 'text-white', 'shadow-md');
-        btnAtt?.classList.remove('text-slate-400');
-        btnOrg?.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-        btnOrg?.classList.add('text-slate-400');
+        btnAtt?.classList.add('bg-slate-950', 'text-white', 'shadow-sm');
+        btnAtt?.classList.remove('text-slate-600');
+        btnOrg?.classList.remove('bg-slate-950', 'text-white', 'shadow-sm');
+        btnOrg?.classList.add('text-slate-600');
 
         // Refresh attendee upcoming events and pass card immediately
         if (global.Attendee && typeof global.Attendee.loadUpcomingEvents === 'function') {
