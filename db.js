@@ -50,7 +50,7 @@ function initSchema() {
       start_time TEXT NOT NULL,
       end_time TEXT NOT NULL,
       is_active INTEGER NOT NULL DEFAULT 1,
-      dynamic_qr INTEGER NOT NULL DEFAULT 1,
+      dynamic_qr INTEGER NOT NULL DEFAULT 0,
       category TEXT DEFAULT 'Tech / AI',
       allowed_emails TEXT DEFAULT '',
       require_whitelist INTEGER NOT NULL DEFAULT 0,
@@ -272,7 +272,7 @@ function createEvent(eventData) {
     eventData.start_time,
     eventData.end_time,
     eventData.is_active !== undefined ? (eventData.is_active ? 1 : 0) : 1,
-    eventData.dynamic_qr !== undefined ? (eventData.dynamic_qr ? 1 : 0) : 1,
+    eventData.dynamic_qr !== undefined ? (eventData.dynamic_qr ? 1 : 0) : 0,
     eventData.category || 'Tech / AI',
     allowedEmailsStr,
     eventData.require_whitelist !== undefined ? (eventData.require_whitelist ? 1 : 0) : (allowedEmailsStr.length > 0 ? 1 : 0),
@@ -553,10 +553,9 @@ function seedDemoData() {
     console.log('Seeding campus demo events including Hackathons & Workshops...');
     const now = new Date();
 
-    // 1. Flagship SRM National Hackathon at TP Ganesan
-    const hackDate1 = new Date(now.getTime() + 1 * 86400000);
-    hackDate1.setHours(9, 0, 0, 0);
-    const hackEnd1 = new Date(hackDate1.getTime() + 36 * 3600000);
+    // 1. Flagship SRM National Hackathon at TP Ganesan (Currently Open for Check-in)
+    const hackStart1 = new Date(now.getTime() - 2 * 3600000);
+    const hackEnd1 = new Date(now.getTime() + 34 * 3600000);
     createEvent({
       id: 'evt_hackathon_tpganesan',
       organizer_id: 'usr_org_default',
@@ -567,11 +566,11 @@ function seedDemoData() {
       latitude: 12.82315,
       longitude: 80.04420,
       radius_meters: 100,
-      start_time: hackDate1.toISOString(),
+      start_time: hackStart1.toISOString(),
       end_time: hackEnd1.toISOString(),
       category: 'Hackathon',
       is_active: 1,
-      dynamic_qr: 1,
+      dynamic_qr: 0,
       allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
       require_whitelist: 0
     });
@@ -594,7 +593,7 @@ function seedDemoData() {
       end_time: hackEnd2.toISOString(),
       category: 'Hackathon',
       is_active: 1,
-      dynamic_qr: 1,
+      dynamic_qr: 0,
       allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
       require_whitelist: 0
     });
@@ -617,7 +616,7 @@ function seedDemoData() {
       end_time: workshopEnd.toISOString(),
       category: 'Workshop',
       is_active: 1,
-      dynamic_qr: 1,
+      dynamic_qr: 0,
       allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
       require_whitelist: 0
     });
@@ -640,7 +639,7 @@ function seedDemoData() {
       end_time: culturalEnd.toISOString(),
       category: 'Cultural',
       is_active: 1,
-      dynamic_qr: 1,
+      dynamic_qr: 0,
       allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
       require_whitelist: 0
     });
@@ -663,11 +662,19 @@ function seedDemoData() {
       end_time: seminarEnd.toISOString(),
       category: 'Seminar',
       is_active: 1,
-      dynamic_qr: 1,
+      dynamic_qr: 0,
       allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
       require_whitelist: 0
     });
   }
+
+  // Ensure all campus events run with unique static event QR codes and flagship checkin is open
+  try {
+    const nowIso = new Date(Date.now() - 2 * 3600000).toISOString();
+    const endIso = new Date(Date.now() + 34 * 3600000).toISOString();
+    db.prepare("UPDATE events SET start_time = ?, end_time = ?, is_active = 1, dynamic_qr = 0 WHERE id = 'evt_hackathon_tpganesan'").run(nowIso, endIso);
+    db.exec("UPDATE events SET dynamic_qr = 0 WHERE id LIKE 'evt_%'");
+  } catch (_) {}
 }
 
 function getAttendeeHistoryByEmail(email) {

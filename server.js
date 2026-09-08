@@ -594,7 +594,7 @@ async function handleRequest(req, res) {
         start_time: startTime,
         end_time: endTime,
         is_active: body.is_active !== undefined ? body.is_active : 1,
-        dynamic_qr: body.dynamic_qr !== undefined ? body.dynamic_qr : 1,
+        dynamic_qr: body.dynamic_qr !== undefined ? body.dynamic_qr : 0,
         category: (body.category || 'Tech / AI').trim(),
         allowed_emails: allowedEmailsStr,
         require_whitelist: requireWhitelist
@@ -766,9 +766,11 @@ async function handleRequest(req, res) {
           venue_name: event.venue_name
         });
       } else {
+        const staticToken = `GEO:${event.id}:${event.static_code || 'CODE'}`;
         return sendJson(res, 200, {
           is_dynamic: false,
-          token: event.static_code,
+          token: staticToken,
+          static_code: event.static_code,
           event_id: event.id,
           event_title: event.title,
           venue_name: event.venue_name

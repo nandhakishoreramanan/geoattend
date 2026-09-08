@@ -61,10 +61,22 @@ function validateToken(submittedToken, eventId, secretKey, isDynamic = false, st
 
   const cleanToken = submittedToken.trim();
 
+  // Check if token matches this event statically (GEO:eventId:staticCode, staticCode, eventId, or GEO:eventId)
+  const isDirectEventMatch = 
+    cleanToken === staticCode ||
+    cleanToken === eventId ||
+    cleanToken === `GEO:${eventId}` ||
+    (staticCode && cleanToken === `GEO:${eventId}:${staticCode}`) ||
+    (cleanToken.startsWith(`GEO:${eventId}:`) && cleanToken.split(':').length <= 3);
+
+  if (isDirectEventMatch) {
+    return { valid: true };
+  }
+
   // If dynamic QR is disabled, allow either the static code or event ID
   if (!isDynamic) {
-    if (cleanToken === staticCode || cleanToken === eventId || cleanToken.startsWith(`GEO:${eventId}`)) {
-      return { valid: true };
+    if (cleanToken.startsWith('GEO:') && cleanToken.split(':')[1] !== eventId) {
+      return { valid: false, reason: 'This QR code belongs to a different event' };
     }
     return { valid: false, reason: 'QR Code does not match this event' };
   }
@@ -76,6 +88,9 @@ function validateToken(submittedToken, eventId, secretKey, isDynamic = false, st
 
   const parts = cleanToken.split(':');
   if (parts.length !== 4) {
+    if (parts[1] === eventId) {
+      return { valid: true };
+    }
     return { valid: false, reason: 'Malformed dynamic QR token' };
   }
 

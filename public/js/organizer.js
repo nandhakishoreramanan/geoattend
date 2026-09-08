@@ -350,7 +350,7 @@
       document.getElementById('currentEventTitle').textContent = event.title;
       document.getElementById('currentEventVenue').textContent = event.venue_name;
       document.getElementById('currentEventRadius').textContent = `${event.radius_meters}m`;
-      document.getElementById('currentEventMode').textContent = event.dynamic_qr ? 'Dynamic Rotating (20s)' : 'Static Code';
+      document.getElementById('currentEventMode').textContent = event.dynamic_qr ? 'Dynamic Rotating (20s)' : 'Static Event QR';
       
       const badge = document.getElementById('currentEventStatusBadge');
       if (badge) {
@@ -833,6 +833,14 @@
           } else {
             const textEl = document.getElementById('qrCountdownText');
             if (textEl) textEl.textContent = 'Static';
+            const fsTextEl = document.getElementById('fsQrCountdownText');
+            if (fsTextEl) fsTextEl.textContent = 'Static';
+            const ring = document.getElementById('qrCountdownRing');
+            if (ring) ring.style.strokeDashoffset = 0;
+            const fsRing = document.getElementById('fsQrCountdownRing');
+            if (fsRing) fsRing.style.strokeDashoffset = 0;
+            const valRemaining = document.getElementById('qrValidityRemaining');
+            if (valRemaining) valRemaining.textContent = 'Static';
           }
         } catch (err) {
           console.error('Failed to update QR:', err);

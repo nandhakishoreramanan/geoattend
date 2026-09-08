@@ -322,7 +322,7 @@
           badge.textContent = 'Awaiting Scan';
         }
         if (details) {
-          details.textContent = 'Scan the live 20-second dynamic rotating QR code displayed on the organizer screen.';
+          details.textContent = 'Scan or upload the unique event QR code displayed on the organizer screen.';
         }
         if (countdownBar) countdownBar.classList.add('hidden');
         return;
@@ -335,12 +335,6 @@
       if (isGeo) {
         const parts = token.split(':');
         const tokenEventId = parts[1];
-        const tokenTimeSlice = parseInt(parts[2], 10);
-        const now = Date.now();
-        const currentTimeSlice = Math.floor(now / 20000);
-        const elapsedInSlice = Math.floor((now % 20000) / 1000);
-        const remainingSec = 20 - elapsedInSlice;
-        const isTimeValid = tokenTimeSlice === currentTimeSlice || tokenTimeSlice === (currentTimeSlice - 1);
         const isEventValid = !this.selectedEventId || tokenEventId === this.selectedEventId;
 
         if (!isEventValid) {
@@ -356,29 +350,11 @@
             badge.textContent = '✕ Event Mismatch';
           }
           if (details) {
-            details.innerHTML = `Token belongs to another event. Please scan the QR code for <b class="text-slate-900 dark:text-white">"${activeEvent?.title || 'this event'}"</b>.`;
+            const scannedEvt = (this.eventsList || []).find(e => e.id === tokenEventId);
+            const scannedTitle = scannedEvt ? `"${scannedEvt.title}"` : 'another event';
+            details.innerHTML = `Token belongs to ${scannedTitle}. Please scan the QR code for <b class="text-slate-900 dark:text-white">"${activeEvent?.title || 'this event'}"</b>.`;
           }
           if (countdownBar) countdownBar.classList.add('hidden');
-        } else if (!isTimeValid) {
-          if (card) {
-            card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
-          }
-          if (icon) {
-            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
-            icon.textContent = '✕';
-          }
-          if (badge) {
-            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
-            badge.textContent = '✕ QR Code Expired (20s Window Passed)';
-          }
-          if (details) {
-            details.innerHTML = 'Dynamic token expired. Dynamic codes rotate every 20s to stop proxy attendance. Please scan the current code.';
-          }
-          if (countdownBar) {
-            countdownBar.classList.remove('hidden');
-            if (countdownText) countdownText.innerHTML = '<span class="text-rose-600 dark:text-rose-400 font-bold">✕ Window Expired</span>';
-            if (countdownRemaining) countdownRemaining.textContent = 'Re-scan needed';
-          }
         } else {
           if (card) {
             card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
@@ -389,38 +365,76 @@
           }
           if (badge) {
             badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
-            badge.textContent = '✓ 20s Dynamic QR Verified';
+            badge.textContent = '✓ Event QR Verified';
           }
           if (details) {
-            details.innerHTML = 'Cryptographic HMAC verified. Valid for current 20-second dynamic slice.';
+            details.innerHTML = `Authenticated event QR verified for <b class="text-slate-900 dark:text-white">"${activeEvent?.title || 'Selected Event'}"</b>.`;
           }
           if (countdownBar) {
             countdownBar.classList.remove('hidden');
             if (countdownText) {
               countdownText.innerHTML = `
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Active 20s Dynamic QR</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Authentic Event QR</span>
               `;
             }
             if (countdownRemaining) {
-              countdownRemaining.textContent = `${remainingSec}s left in current slice`;
+              countdownRemaining.textContent = 'Event Match Verified';
             }
           }
         }
+      } else if (isPass) {
+        const parts = token.split(':');
+        const passEventId = parts[1];
+        const isEventValid = !this.selectedEventId || passEventId === this.selectedEventId;
+
+        if (!isEventValid) {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
+            icon.textContent = '✕';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
+            badge.textContent = '✕ Event Mismatch';
+          }
+          if (details) {
+            details.textContent = 'Personal pass was issued for a different event.';
+          }
+          if (countdownBar) countdownBar.classList.add('hidden');
+        } else {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-xs';
+            icon.textContent = '✓';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+            badge.textContent = '✓ Personal Pass Verified';
+          }
+          if (details) {
+            details.textContent = 'Google-authenticated personal entry pass verified.';
+          }
+          if (countdownBar) countdownBar.classList.add('hidden');
+        }
       } else if (isStaticMatch) {
         if (card) {
-          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800/80';
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
         }
         if (icon) {
-          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-blue-500 text-white shadow-xs';
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-xs';
           icon.textContent = '✓';
         }
         if (badge) {
-          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/60 dark:text-blue-200 dark:border-blue-700';
-          badge.textContent = 'Static Code Matched';
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+          badge.textContent = '✓ Event Code Verified';
         }
         if (details) {
-          details.textContent = 'Matched event static fallback code.';
+          details.textContent = `Direct code match for "${activeEvent?.title || 'event'}".`;
         }
         if (countdownBar) countdownBar.classList.add('hidden');
       } else {
@@ -444,12 +458,7 @@
 
     startDynamicCountdownLoop() {
       if (this.dynamicCountdownInterval) clearInterval(this.dynamicCountdownInterval);
-      this.dynamicCountdownInterval = setInterval(() => {
-        const token = (document.getElementById('attendeeScannedToken')?.value || '').trim();
-        if (token && token.startsWith('GEO:')) {
-          this.updatePillarQR();
-        }
-      }, 1000);
+      // Static QR codes do not expire; continuous polling loop disabled
     },
 
     updateUserBadge(user) {
@@ -692,7 +701,7 @@
           <div class="flex items-center justify-between pt-3 border-t ${isSelected ? 'border-slate-800' : 'border-slate-100 dark:border-slate-800'} text-xs">
             <div class="text-[11px] leading-tight ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}">
               <span>Radius: <b class="${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'} font-mono">${evt.radius_meters}m</b></span>
-              <span class="block text-[10px] opacity-75">${evt.dynamic_qr ? '🔄 Dynamic QR' : '📌 Static QR'}</span>
+              <span class="block text-[10px] opacity-75">${evt.dynamic_qr ? '🔄 Dynamic QR' : '📌 Event QR'}</span>
             </div>
             <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
               isSelected
@@ -853,9 +862,16 @@
       // Refresh personal Google Pass card for this event
       await this.refreshPassCard();
 
-      // Clear any previous scanned token so the attendee scans for this specific event
+      // Clear token only if it belongs to a different event
       const tokenInput = document.getElementById('attendeeScannedToken');
-      if (tokenInput) tokenInput.value = '';
+      if (tokenInput && tokenInput.value) {
+        const val = tokenInput.value.trim();
+        const matchesThisEvent = val.includes(evt.id) || val === evt.static_code || val.startsWith(`GEO:${evt.id}`);
+        if (!matchesThisEvent) {
+          tokenInput.value = '';
+        }
+      }
+      this.updatePillarsUI();
 
       if (showToast) {
         window.App?.showToast(`Selected Event: "${evt.title}" (${evt.venue_name})`, 'info');
@@ -1467,9 +1483,9 @@
         return;
       }
 
-      // --- PILLAR 3: Correct 20-Second Dynamic QR Code ---
+      // --- PILLAR 3: Correct Event QR Code ---
       if (!token) {
-        window.App?.showToast('Pillar 3 Check Failed: Live 20-second dynamic QR scan required. Please open camera or upload QR image.', 'warning');
+        window.App?.showToast('Pillar 3 Check Failed: Event QR scan required. Please open camera or upload QR image.', 'warning');
         const startCamBtn = document.getElementById('btnStartCamera');
         if (startCamBtn) {
           startCamBtn.classList.add('animate-pulse');
@@ -1485,22 +1501,13 @@
 
       const activeEvt = (this.eventsList || []).find(e => e.id === this.selectedEventId);
 
-      // Verify token event matching and time slice validity
+      // Verify token event matching
       if (token.startsWith('GEO:')) {
         const parts = token.split(':');
         if (parts[1] !== this.selectedEventId) {
           const scannedEvt = (this.eventsList || []).find(e => e.id === parts[1]);
           const scannedName = scannedEvt ? `"${scannedEvt.title}"` : 'a different event';
           window.App?.showToast(`Pillar 3 Check Failed: QR Code mismatch. This token belongs to ${scannedName}, not "${activeEvt?.title || 'the selected event'}".`, 'error');
-          return;
-        }
-
-        const tokenTimeSlice = parseInt(parts[2], 10);
-        const currentTimeSlice = Math.floor(Date.now() / 20000);
-        const isTimeValid = tokenTimeSlice === currentTimeSlice || tokenTimeSlice === (currentTimeSlice - 1);
-        if (!isTimeValid) {
-          window.App?.showToast('Pillar 3 Check Failed: 20-second dynamic QR code has expired. Please scan the current fresh QR code on the organizer screen.', 'error');
-          this.updatePillarsUI();
           return;
         }
       } else if (token.startsWith('PASS:')) {
