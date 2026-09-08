@@ -615,7 +615,7 @@
           global.Attendee.refreshPassCard();
         }
         if (global.Attendee && typeof global.Attendee.acquireDeviceGPS === 'function') {
-          global.Attendee.acquireDeviceGPS();
+          global.Attendee.acquireDeviceGPS(false);
         }
       }
 
@@ -625,6 +625,25 @@
     showToast(message, type = 'info') {
       const toastContainer = document.getElementById('toastContainer');
       if (!toastContainer) return;
+
+      // Prevent duplicate toasts within 4 seconds
+      const now = Date.now();
+      if (!this._recentToasts) this._recentToasts = new Map();
+      const lastTime = this._recentToasts.get(message) || 0;
+      if (now - lastTime < 4000) {
+        return;
+      }
+      this._recentToasts.set(message, now);
+
+      // Clean up old entries from recentToasts
+      for (const [msg, time] of this._recentToasts.entries()) {
+        if (now - time > 10000) this._recentToasts.delete(msg);
+      }
+
+      // Limit max visible toasts to 2 to eliminate screen clutter
+      while (toastContainer.children.length >= 2) {
+        toastContainer.firstElementChild?.remove();
+      }
 
       const toast = document.createElement('div');
       const colors = {
@@ -646,11 +665,11 @@
         toast.classList.remove('translate-y-2', 'opacity-0');
       });
 
-      // Remove after 3.5s
+      // Remove after 2.2s
       setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
-      }, 3500);
+      }, 2200);
     },
 
     bindLocalAiModal() {

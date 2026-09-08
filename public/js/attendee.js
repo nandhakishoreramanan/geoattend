@@ -30,7 +30,7 @@
       if (window.App && window.App.currentUser) {
         this.onUserAuthChanged(window.App.currentUser);
       }
-      this.acquireDeviceGPS();
+      this.acquireDeviceGPS(false);
     },
 
     onUserAuthChanged(user) {
@@ -584,7 +584,7 @@
       if (this.currentCoords) {
         this.updateGpsUI(this.currentCoords);
       } else {
-        this.acquireDeviceGPS();
+        this.acquireDeviceGPS(false);
       }
 
       // Refresh personal Google Pass card for this event
@@ -766,7 +766,7 @@
       // Live GPS Button
       const btnGetGPS = document.getElementById('btnGetAttendeeGPS');
       if (btnGetGPS) {
-        btnGetGPS.addEventListener('click', () => this.acquireDeviceGPS());
+        btnGetGPS.addEventListener('click', () => this.acquireDeviceGPS(true));
       }
 
       // GPS Simulator Presets for Laptop / Desktop Evaluator
@@ -965,9 +965,15 @@
       }
     },
 
-    acquireDeviceGPS() {
+    acquireDeviceGPS(userInitiated = false) {
+      if (this._isAcquiringGPS) return;
+      this._isAcquiringGPS = true;
+
       if (!navigator.geolocation) {
-        window.App?.showToast('Geolocation not supported by your browser', 'warning');
+        this._isAcquiringGPS = false;
+        if (userInitiated) {
+          window.App?.showToast('Geolocation not supported by your browser', 'warning');
+        }
         return;
       }
 
@@ -976,6 +982,7 @@
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          this._isAcquiringGPS = false;
           this.currentCoords = {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
@@ -983,11 +990,16 @@
           };
 
           this.updateGpsUI(this.currentCoords);
-          window.App?.showToast(`GPS verified (Accuracy: ±${Math.round(pos.coords.accuracy)}m)`, 'success');
+          if (userInitiated) {
+            window.App?.showToast(`GPS verified (Accuracy: ±${Math.round(pos.coords.accuracy)}m)`, 'success');
+          }
         },
         (err) => {
+          this._isAcquiringGPS = false;
           if (statusEl) statusEl.textContent = `GPS Error: ${err.message}`;
-          window.App?.showToast(`GPS Error: ${err.message}. Try GPS Simulator presets.`, 'warning');
+          if (userInitiated) {
+            window.App?.showToast(`GPS Error: ${err.message}. Try GPS Simulator presets.`, 'warning');
+          }
         },
         { enableHighAccuracy: true, timeout: 8000 }
       );
