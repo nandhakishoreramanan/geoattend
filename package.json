@@ -1,0 +1,24 @@
+{
+  "name": "geo-tagged-attendance-system",
+  "version": "1.0.0",
+  "description": "Full-stack QR-Based Geo-Tagged Attendance Management System with real-time tracking, anti-proxy rotating dynamic tokens, and downloadable reports.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/api.test.js"
+  },
+  "keywords": [
+    "qr-code",
+    "geofencing",
+    "haversine",
+    "attendance-management",
+    "real-time",
+    "sse",
+    "anti-proxy"
+  ],
+  "author": "Nandha Kishore",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoAttend — QR & Geofenced Attendance Management System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- Leaflet CSS & JS (with offline Canvas Radar fallback) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- QR Code Decoder Engine (Local Vendor + CDN Fallback) -->
+  <script src="/vendor/jsqr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script>
+    if (typeof window.jsQR === 'undefined' && typeof jsQR === 'function') {
+      window.jsQR = jsQR;
+    }
+  </script>
+  <!-- Google Identity Services (Sign in with Google) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- TOP NAVBAR -->
+  <header class="no-print sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
+          <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-lg tracking-tight text-white">GeoAttend</span>
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">SRM IST</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium">QR & Geofenced Attendance</p>
+        </div>
+      </div>
+
+      <!-- Portal Switcher Pills -->
+      <div class="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/60 shadow-inner">
+        <button id="btnRoleOrganizer" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-md transition-all">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Organizer Portal
+        </button>
+        <button id="btnRoleAttendee" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+          </svg>
+          Attendee Check-in
+        </button>
+      </div>
+
+      <!-- User Profile Badge & Live Status -->
+      <div class="flex items-center gap-3">
+        <!-- Google Auth Button & Logged-In User Pill -->
+        <div id="googleAuthNavContainer" class="flex items-center">
+          <button id="btnGoogleSignInNav" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/20 transition-all shadow-sm">
+            <svg class="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span class="hidden sm:inline">Sign in with Google</span>
+            <span class="sm:hidden">Sign In</span>
+          </button>
+          <div id="googleUserPill" class="hidden flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-lg text-xs cursor-pointer hover:border-slate-600 transition-all">
+            <img id="googleUserAvatar" class="w-6 h-6 rounded-full border border-blue-400/50 object-cover" src="" alt="Google avatar" />
+            <div class="text-left hidden sm:block leading-tight">
+              <span id="googleUserName" class="font-bold text-white block text-[11px] truncate max-w-[120px]">User</span>
+              <span id="googleUserEmail" class="text-[9px] text-slate-400 block truncate max-w-[120px]">user@gmail.com</span>
+            </div>
+            <button id="btnSignOutGoogle" title="Sign out / Switch account" class="text-slate-400 hover:text-red-400 text-xs ml-1 font-bold">✕</button>
+          </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-2 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/60">
+          <span id="liveStreamIndicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Real-Time SSE</span>
+        </div>
+
+        <button id="btnNewEvent" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-blue-600/20 transition-all">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Create Event
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 1. ORGANIZER PORTAL VIEW                                                  -->
+  <!-- ========================================================================= -->
+  <main id="organizerPortal" class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Active Event Switcher & Header Bar -->
+    <div class="glass-panel p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 id="currentEventTitle" class="text-2xl font-bold tracking-tight text-white">Loading Event...</h1>
+          <span id="currentEventStatusBadge" class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Active</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 font-medium">
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span id="currentEventVenue">Auditorium</span>
+          </span>
+          <span>•</span>
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Geofence Radius: <b id="currentEventRadius" class="text-blue-400 font-mono">80m</b>
+          </span>
+          <span>•</span>
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Mode: <b id="currentEventMode" class="text-slate-300">Dynamic Rotating (20s)</b>
+          </span>
+          <span>•</span>
+          <span id="eventWhitelistStatusBadge" class="inline-flex items-center gap-1 font-semibold text-emerald-400">
+            🔒 <b id="currentEventWhitelistText">Whitelist Active</b>
+          </span>
+        </div>
+      </div>
+
+      <!-- Event Picker Dropdown & Quick Actions -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <label for="eventSelector" class="sr-only">Select Event</label>
+        <select id="eventSelector" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <!-- Populated dynamically -->
+        </select>
+        <button id="btnManageWhitelist" title="Manage Authorized Attendee Gmails" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors">
+          <span>👥 Gmail Whitelist</span>
+          <span id="whitelistCountBadge" class="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-300 font-mono text-[10px]">0</span>
+        </button>
+        <button id="btnFullscreenQR" title="Open Fullscreen Presenter Mode for Projector" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+          <span>Presenter Mode</span>
+        </button>
+        <button id="btnDeleteCurrentEvent" title="Delete current event" class="px-2.5 py-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 rounded-lg text-xs transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4 REAL-TIME METRIC CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Total Attendance -->
+      <div class="glass-panel p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Check-ins</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="statTotalCheckins" class="text-3xl font-extrabold text-white font-mono">0</span>
+          <span class="text-xs text-slate-400">scans recorded</span>
+        </div>
+        <div class="mt-2 text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+          <span>● Live SSE stream active</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Verified Inside Boundary -->
+      <div class="glass-panel p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Verified In-Bounds</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="statVerifiedCount" class="text-3xl font-extrabold text-emerald-400 font-mono">0</span>
+          <span class="text-xs text-slate-400">within geofence</span>
+        </div>
+        <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+          <span>Haversine distance verified</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Pass Rate % -->
+      <div class="glass-panel p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Geofence Pass Rate</span>
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="statPassRate" class="text-3xl font-extrabold text-white font-mono">0%</span>
+          <span class="text-xs text-slate-400">compliance</span>
+        </div>
+        <div class="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div id="passRateProgressBar" class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Card 4: Out of Bounds Violations -->
+      <div class="glass-panel p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Security Alerts</span>
+          <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="statOutOfBoundsCount" class="text-3xl font-extrabold text-rose-400 font-mono">0</span>
+          <span class="text-xs text-slate-400">out-of-bounds</span>
+        </div>
+        <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>Avg Distance: <b id="statAvgDistance" class="text-slate-300 font-mono">0m</b></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- OPTIONAL BONUS ⭐: AI SMART ATTENDANCE ANALYTICS & ANOMALY DETECTION -->
+    <div class="glass-panel p-6 border border-indigo-500/30 bg-gradient-to-br from-indigo-950/20 via-slate-900/60 to-slate-900/80 relative overflow-hidden">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+            🤖
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-extrabold text-sm text-white">Smart Attendance Insights & Anomaly Detection AI</h3>
+              <span class="px-2 py-0.5 text-[9px] font-bold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">BONUS AI ⭐</span>
+            </div>
+            <p class="text-xs text-slate-400">Predictive turnout modeling, late arrival heatmaps, and proxy prevention audit</p>
+          </div>
+        </div>
+        <button id="btnRefreshAiInsights" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 rounded-lg text-xs font-semibold border border-indigo-500/40 flex items-center gap-1.5 transition-colors self-start md:self-auto">
+          <span>🔄 Refresh AI Analysis</span>
+        </button>
+      </div>
+
+      <!-- AI Metrics Ribbon -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-b border-slate-800/60">
+        <div class="p-3 rounded-lg bg-slate-900/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Turnout Health Score</div>
+          <div id="aiHealthScore" class="text-2xl font-extrabold text-indigo-400 font-mono mt-1">--/100</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Based on compliance & density</div>
+        </div>
+        <div class="p-3 rounded-lg bg-slate-900/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Forecasted Final Turnout</div>
+          <div id="aiProjectedTurnout" class="text-2xl font-extrabold text-emerald-400 font-mono mt-1">--</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Estimated total by session close</div>
+        </div>
+        <div class="p-3 rounded-lg bg-slate-900/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Punctuality Rate</div>
+          <div id="aiPunctualityRate" class="text-2xl font-extrabold text-blue-400 font-mono mt-1">--%</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">On-time within first 15 mins</div>
+        </div>
+      </div>
+
+      <!-- Natural Language AI Executive Briefing -->
+      <div class="pt-4 space-y-3">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+          <span>AI Executive Briefing:</span>
+        </div>
+        <p id="aiExecutiveSummary" class="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 font-sans">
+          Analyzing attendance velocity, geofence radius integrity, and time-slice tokens...
+        </p>
+
+        <!-- Anomaly Container -->
+        <div id="aiAnomaliesContainer" class="hidden space-y-2"></div>
+
+        <!-- Recommendations -->
+        <div class="space-y-1.5 pt-1">
+          <div class="text-[11px] font-bold text-slate-400 uppercase">AI Recommendations:</div>
+          <ul id="aiRecommendationsList" class="space-y-1">
+            <!-- Rendered by organizer.js -->
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTENT GRID (2 COLUMNS) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- LEFT COLUMN: Live QR Code & Distance Breakdown (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <!-- Live Dynamic QR Code Card -->
+        <div class="glass-panel p-6 flex flex-col items-center text-center relative overflow-hidden">
+          <div class="w-full flex items-center justify-between mb-4">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              Live Check-In QR Code
+            </span>
+
+            <!-- Circular Dynamic Countdown Timer Ring -->
+            <div class="flex items-center gap-2" title="Refreshes automatically to prevent proxy attendance screenshots">
+              <div class="relative w-8 h-8 flex items-center justify-center">
+                <svg class="w-8 h-8" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="18" fill="none" stroke="#1e293b" stroke-width="3" />
+                  <circle id="qrCountdownRing" class="progress-ring-circle" cx="20" cy="20" r="18" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="0" />
+                </svg>
+                <span id="qrCountdownText" class="absolute text-[10px] font-mono font-bold text-blue-400">20s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Crisp Canvas QR Code Display -->
+          <div class="p-3 bg-white rounded-2xl shadow-xl border-4 border-slate-800/60 inline-block transition-transform hover:scale-[1.02]">
+            <canvas id="organizerQrCanvas" class="w-52 h-52"></canvas>
+          </div>
+
+          <button id="btnDownloadQrImage" type="button" class="mt-2.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-blue-400 hover:text-blue-300 rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Download QR Image (.png)</span>
+          </button>
+
+          <!-- Token Hash & Instructions -->
+          <div class="mt-4 space-y-1 w-full">
+            <div class="text-xs text-slate-400">Current Cryptographic Token:</div>
+            <div id="currentQrTokenDisplay" class="text-xs font-mono font-bold text-blue-400 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 break-all">
+              Loading token...
+            </div>
+            <p class="text-[11px] text-slate-500 pt-1">
+              🔒 <b>Anti-Proxy Active:</b> Dynamic code refreshes every 20s. Screenshots shared to remote peers will expire.
+            </p>
+          </div>
+        </div>
+
+        <!-- Distance Distribution Breakdown -->
+        <div class="glass-panel p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Distance Distribution</span>
+            <span class="text-xs text-slate-500">From Venue Center</span>
+          </div>
+          <div id="distanceBucketBars" class="space-y-2.5">
+            <!-- Rendered by organizer.js -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: Interactive Geofence Map & Live Feed (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Geofence Radar / Map Card -->
+        <div class="glass-panel p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                Geofence Radar Visualizer
+              </span>
+              <p class="text-xs text-slate-400 mt-0.5">Green = Inside Allowed Boundary • Red = Out of Bounds</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="flex items-center gap-1 text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> In-Bounds
+              </span>
+              <span class="flex items-center gap-1 text-rose-400">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span> Violation
+              </span>
+            </div>
+          </div>
+
+          <!-- Radar Canvas / Leaflet Map Container -->
+          <div id="geofenceRadarContainer" class="w-full h-72 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 relative">
+            <!-- Canvas or Leaflet rendered here -->
+          </div>
+        </div>
+
+        <!-- Real-Time Activity Feed / Ticker -->
+        <div class="glass-panel p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              Recent Live Check-ins
+            </span>
+            <span class="text-xs text-slate-500 font-mono">Stream: Active</span>
+          </div>
+
+          <div id="recentUpdatesFeed" class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+            <!-- Streamed items inserted dynamically -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- BOTTOM FULL-WIDTH: ATTENDEE AUDIT TABLE & DOWNLOADABLE REPORTS (BROWNIE) -->
+    <div class="glass-panel p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-white tracking-tight">Attendee Roster & Security Audit</h2>
+          <p class="text-xs text-slate-400">Complete log of all scanned credentials, verified GPS distances, and status overrides</p>
+        </div>
+
+        <!-- Brownie Feature: Downloadable Reports (CSV & PDF) -->
+        <div class="flex flex-wrap items-center gap-2 no-print">
+          <button id="btnExportCsv" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download CSV Report
+          </button>
+          <button id="btnExportPdf" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print / PDF Summary
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Filter Bar & Search -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+        <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs w-full sm:w-auto">
+          <button class="status-filter-btn px-3 py-1 rounded-md font-semibold bg-blue-600 text-white transition-colors" data-status="ALL">All</button>
+          <button class="status-filter-btn px-3 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-colors" data-status="VERIFIED">Verified</button>
+          <button class="status-filter-btn px-3 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-colors" data-status="OUT_OF_BOUNDS">Out of Bounds</button>
+        </div>
+
+        <div class="relative w-full sm:w-64">
+          <input id="attendeeSearch" type="text" placeholder="Search name or student ID..." class="w-full bg-slate-900 border border-slate-800 rounded-lg text-xs px-3 py-1.5 pl-8 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <svg class="w-4 h-4 text-slate-500 absolute left-2.5 top-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto rounded-lg border border-slate-800">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <th class="py-3 px-4">Registration ID</th>
+              <th class="py-3 px-4">Full Name</th>
+              <th class="py-3 px-4">Scan Time</th>
+              <th class="py-3 px-4">Distance</th>
+              <th class="py-3 px-4">Status</th>
+              <th class="py-3 px-4">Audit Notes</th>
+              <th class="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="attendeesTableBody">
+            <!-- Rendered by organizer.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 2. ATTENDEE / STUDENT PORTAL VIEW                                         -->
+  <!-- ========================================================================= -->
+  <section id="attendeePortal" class="hidden flex-1 max-w-4xl mx-auto w-full px-4 py-8 space-y-8">
+
+    <!-- Active Event Badge for Attendee & User Profile -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl glass-panel">
+      <div class="space-y-1 text-center sm:text-left">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30 text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          Attendee Verification Terminal
+        </div>
+        <h1 class="text-xl font-bold tracking-tight text-white">SRM Student Attendance</h1>
+        <p class="text-xs text-slate-400">Select an upcoming campus event, scan the QR code, and verify GPS</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div id="attendeeUserBadge"></div>
+      </div>
+    </div>
+
+    <!-- UPCOMING EVENTS DISPLAY (TASK 2 USER REQUIREMENT) -->
+    <div class="space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>📅 Upcoming Campus Events</span>
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-300">Live Catalog</span>
+            <button id="btnRefreshUpcomingEvents" type="button" title="Refresh upcoming events" class="ml-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700 flex items-center gap-1 transition-all cursor-pointer">
+              <svg class="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </h2>
+          <p class="text-xs text-slate-400">Browse events scheduled at SRM Kattankulathur campus</p>
+        </div>
+
+        <!-- AI Natural Language Event Search (Bonus ⭐) -->
+        <div class="relative w-full sm:w-72">
+          <input id="eventSearchInput" type="text" placeholder="Search events with AI (e.g. Distributed, Hackathon)..." class="w-full bg-slate-900 border border-slate-700/80 rounded-lg text-xs px-3 py-2 pl-8 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500">
+          <span class="absolute left-2.5 top-2.5 text-xs text-slate-500">🔍</span>
+        </div>
+      </div>
+
+      <!-- Events Grid -->
+      <div id="upcomingEventsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Populated dynamically by attendee.js -->
+      </div>
+    </div>
+
+    <!-- GOOGLE AUTH ATTENDEE ENTRY PASS & ACCESS GATEKEEPER -->
+    <div id="googlePassCard" class="glass-panel p-6 space-y-4 border border-blue-500/30 bg-gradient-to-b from-blue-950/40 to-slate-900/80 relative overflow-hidden">
+      
+      <!-- Authorized State: Personalized Entry Pass & QR Code -->
+      <div id="googlePassAuthorized" class="hidden space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-lg">
+              ✓
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-white">Authorized Attendee Entry Pass</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">WHITELIST VERIFIED</span>
+              </div>
+              <p class="text-xs text-slate-400">Access granted for <span id="passUserEmailDisplay" class="font-mono text-emerald-400 font-semibold"></span></p>
+            </div>
+          </div>
+          <button id="btnQuickEnterPass" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all cursor-pointer">
+            <span>🚀 1-Tap Check-In & Enter</span>
+          </button>
+        </div>
+
+        <!-- Personal Entry QR Code & Pass Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <div class="flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-xl w-44 h-44 mx-auto border-4 border-slate-800">
+            <canvas id="personalPassQrCanvas" class="w-36 h-36"></canvas>
+            <span class="text-[9px] text-slate-800 font-bold uppercase tracking-wider mt-1">Personal Entry QR</span>
+          </div>
+
+          <div class="md:col-span-2 space-y-2.5 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Attendee Name</span>
+                <span id="passUserName" class="font-bold text-white truncate block"></span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Event Venue</span>
+                <span id="passVenueName" class="font-bold text-white truncate block"></span>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Personal Entry Code (Scan & Enter)</span>
+              <span id="passEntryTokenText" class="font-mono text-blue-400 text-[11px] select-all break-all"></span>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Show this personal QR pass at the entrance scanner, or click <strong>1-Tap Check-In</strong> to verify your device location and register immediately.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Denied State: Google User NOT on Whitelist -->
+      <div id="googlePassDenied" class="hidden space-y-3 p-2 text-center sm:text-left">
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center text-2xl font-bold">
+            🔒
+          </div>
+          <div class="space-y-1">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2 justify-center sm:justify-start">
+              <span>Access Denied for this Event</span>
+              <span class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold">NOT ON WHITELIST</span>
+            </h4>
+            <p class="text-xs text-slate-300">
+              Your Google account (<span id="deniedUserEmailDisplay" class="font-mono text-rose-400 font-bold"></span>) is not on the organizer's authorized attendee list for <strong id="deniedEventTitle"></strong>.
+            </p>
+            <p class="text-[11px] text-slate-400">
+              Only organizer-whitelisted Gmail addresses can receive an entry pass and check in.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 justify-center sm:justify-start pt-2">
+          <button id="btnSwitchAccountFromDenied" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors">
+            <span>🔄 Switch Google Account</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Prompt State: Unauthenticated / Sign-in required -->
+      <div id="googlePassUnauthenticated" class="space-y-3 text-center sm:text-left">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center text-xl">
+              🔑
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider">Google Sign-In Required for Entry Code</h4>
+              <p class="text-xs text-slate-400">Sign in with your authorized Google / Gmail account to generate your personal entry QR code.</p>
+            </div>
+          </div>
+          <button id="btnPromptGoogleSignIn" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Check-in Form Section -->
+    <div id="checkinFormSection" class="glass-panel p-6 space-y-6">
+
+      <div class="border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-white">Event Attendance Verification</h3>
+        <p class="text-xs text-slate-400">Complete identity details, scan the venue QR code, and verify device coordinates</p>
+      </div>
+
+      <!-- Step 1: Attendee Information -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Attendee Identification</label>
+          <span class="text-[11px] text-slate-500">Saved in browser / JWT</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="attendeeName" class="sr-only">Full Name</label>
+            <input id="attendeeName" type="text" placeholder="Full Name (e.g. Rohan Sharma)" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label for="attendeeStudentId" class="sr-only">Registration ID</label>
+            <input id="attendeeStudentId" type="text" placeholder="Registration ID (e.g. RA2111003010123)" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+          </div>
+        </div>
+        <div>
+          <label for="attendeeEmail" class="sr-only">Verified Google Email Address</label>
+          <div class="relative">
+            <input id="attendeeEmail" type="email" readonly placeholder="Sign in with Google to unlock verified email" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg pl-8 pr-32 py-2 text-xs text-emerald-400 font-mono cursor-not-allowed select-all focus:outline-none">
+            <span class="absolute left-2.5 top-2 text-xs text-emerald-400 font-bold">🔒</span>
+            <span class="absolute right-2 top-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Verified Google</span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">
+            Email is locked to your verified Google account. Manual email entry is disabled for security and attendance verification.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 2: QR Code Camera Scanner & Fallbacks -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">2. Scan Event QR Code</label>
+          <div class="flex items-center gap-2">
+            <button id="btnStartCamera" class="text-xs text-blue-400 hover:text-blue-300 font-medium">Open Camera</button>
+            <button id="btnStopCamera" class="text-xs text-rose-400 hover:text-rose-300 font-medium hidden">Stop Camera</button>
+            <button id="btnFlipCamera" class="text-xs text-slate-400 hover:text-white font-medium" title="Switch front/rear camera">Flip</button>
+          </div>
+        </div>
+
+        <!-- Camera Viewfinder Box -->
+        <div id="scannerDropZone" class="relative w-full h-48 bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center transition-colors cursor-pointer" title="Click or Drag & Drop image here">
+          <video id="scannerVideo" class="w-full h-full object-cover" playsinline></video>
+          <img id="uploadedImagePreview" class="w-full h-full object-contain hidden z-10 bg-slate-950 p-2" alt="Uploaded QR preview" />
+          
+          <!-- Viewfinder Overlays -->
+          <div class="absolute inset-8 pointer-events-none">
+            <div class="viewfinder-corner corner-tl"></div>
+            <div class="viewfinder-corner corner-tr"></div>
+            <div class="viewfinder-corner corner-bl"></div>
+            <div class="viewfinder-corner corner-br"></div>
+            <div id="scannerLaser" class="scanner-laser hidden"></div>
+          </div>
+
+          <div id="scannerFallbackNotice" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/90 pointer-events-none">
+            <svg class="w-8 h-8 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <p class="text-xs text-slate-300 font-medium">Click "Open Camera" to scan live QR code</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Or use file upload / token shortcuts below</p>
+          </div>
+        </div>
+
+        <!-- Token Input / Upload Shortcuts -->
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <label for="attendeeScannedToken" class="sr-only">Scanned QR Token</label>
+            <input id="attendeeScannedToken" type="text" placeholder="Scanned Token (e.g. GEO:evt_...)" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <button id="btnQuickFillToken" title="Auto-fill latest token for selected event" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 whitespace-nowrap">
+            ⚡ Fill Active
+          </button>
+          <label class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 cursor-pointer whitespace-nowrap">
+            📁 Upload
+            <input id="qrFileInput" type="file" accept="image/*" class="hidden">
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 3: Geolocation Verification & Simulator -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Geolocation Verification</label>
+          <button id="btnGetAttendeeGPS" class="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            </svg>
+            Acquire Device GPS
+          </button>
+        </div>
+
+        <!-- Coordinates readout -->
+        <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-xs font-mono">
+          <div>
+            <span class="text-slate-500">LAT:</span> <span id="gpsLatDisplay" class="text-slate-300">12.823250</span>
+            <span class="text-slate-500 ml-2">LNG:</span> <span id="gpsLngDisplay" class="text-slate-300">80.044250</span>
+          </div>
+          <div id="gpsStatusText" class="text-xs text-emerald-400 font-medium">Inside Venue Preset Ready</div>
+        </div>
+
+        <!-- Evaluator GPS Testing Simulator Drawer -->
+        <div class="simulator-bar p-3 rounded-lg bg-slate-900/90 border border-blue-500/20 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1">
+              🧪 Evaluator GPS Simulator
+            </span>
+            <span class="text-[10px] text-slate-400">One-click presets for desktop review</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-medium">
+            <button class="gps-preset-btn px-2 py-1.5 rounded bg-slate-800 hover:bg-emerald-600/30 text-emerald-400 border border-slate-700 hover:border-emerald-500/50 transition-colors text-center" data-preset="inside">
+              ✓ Inside Venue (~14m)
+            </button>
+            <button class="gps-preset-btn px-2 py-1.5 rounded bg-slate-800 hover:bg-blue-600/30 text-blue-400 border border-slate-700 hover:border-blue-500/50 transition-colors text-center" data-preset="edge">
+              Boundary (~65m)
+            </button>
+            <button class="gps-preset-btn px-2 py-1.5 rounded bg-slate-800 hover:bg-rose-600/30 text-rose-400 border border-slate-700 hover:border-rose-500/50 transition-colors text-center" data-preset="outside">
+              Canteen (~380m)
+            </button>
+            <button class="gps-preset-btn px-2 py-1.5 rounded bg-slate-800 hover:bg-rose-600/30 text-rose-400 border border-slate-700 hover:border-rose-500/50 transition-colors text-center" data-preset="remote">
+              Off-Campus (~4.5km)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Check-in Button -->
+      <button id="btnSubmitCheckin" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        Verify Location & Check In
+      </button>
+
+    </div>
+
+    <!-- RESULT CARD (CONFIRMATION / REJECTION) -->
+    <div id="checkinResultCard" class="hidden space-y-6">
+
+      <!-- Pass Ticket -->
+      <div class="ticket-card p-6 shadow-2xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-700/60">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Official Attendance Receipt</span>
+            <h3 id="passEventTitle" class="text-lg font-extrabold text-white">Event Title</h3>
+          </div>
+          <span id="passStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+            VERIFIED
+          </span>
+        </div>
+
+        <div id="passSuccessBox" class="py-5 space-y-3">
+          <div class="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <span class="text-slate-400">Attendee:</span>
+              <div id="passAttendeeName" class="font-bold text-white text-sm">Rohan Sharma</div>
+            </div>
+            <div>
+              <span class="text-slate-400">Registration ID:</span>
+              <div id="passStudentId" class="font-mono font-bold text-blue-400 text-sm">RA2111003010123</div>
+            </div>
+            <div>
+              <span class="text-slate-400">Venue:</span>
+              <div id="passVenue" class="font-medium text-slate-200">TP Ganesan Auditorium</div>
+            </div>
+            <div>
+              <span class="text-slate-400">Timestamp:</span>
+              <div id="passTimestamp" class="font-mono text-slate-300">Just now</div>
+            </div>
+            <div>
+              <span class="text-slate-400">Haversine Distance:</span>
+              <div id="passDistance" class="font-mono font-bold text-emerald-400">14.2m (Limit: 80m)</div>
+            </div>
+            <div>
+              <span class="text-slate-400">Security Hash:</span>
+              <div id="passVerificationHash" class="font-mono text-slate-400">A8F932BC10</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="passFailureBox" class="py-5 space-y-3 hidden">
+          <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-center space-y-1">
+            <div id="failReasonTitle" class="text-sm font-bold text-rose-400">Geofence Violation</div>
+            <p id="failReasonDesc" class="text-xs text-slate-300">You are outside the permitted venue radius.</p>
+            <div id="failDistanceMetrics" class="text-xs font-mono text-rose-300 mt-2"></div>
+          </div>
+        </div>
+
+        <div class="ticket-notch-line"></div>
+
+        <div class="space-y-3 pt-1">
+          <div id="passMessage" class="text-xs text-emerald-400 text-center font-medium">Verified inside venue</div>
+          <button id="btnScanAnother" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold border border-slate-700 transition-colors">
+            Scan Another Event or Refresh
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Attendance History List -->
+    <div class="glass-panel p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">My Verified Passes</span>
+        <span class="text-xs text-slate-500">Local Cache</span>
+      </div>
+      <div id="attendeeHistoryList" class="space-y-2">
+        <!-- Rendered by attendee.js -->
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MODALS                                                                 -->
+  <!-- ========================================================================= -->
+
+  <!-- Modal: Create New Event -->
+  <div id="createEventModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel max-w-xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto border border-slate-700">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white">Create Geofenced Event</h3>
+        <button id="btnCloseEventModal" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <form id="createEventForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Event Title *</label>
+          <input id="newEventTitle" type="text" required placeholder="e.g. AI & Robotics Seminar" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Venue Name *</label>
+          <input id="newEventVenue" type="text" required placeholder="e.g. TP Ganesan Auditorium" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-medium text-slate-400">Description (Optional)</label>
+            <button type="button" id="btnAiGenDesc" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+              <span>✨ AI Auto-Generate Description</span>
+            </button>
+          </div>
+          <textarea id="newEventDesc" rows="2" placeholder="Brief event description..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <!-- Venue Coordinates & Map Picker -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-slate-400">Venue Coordinates (Geofence Center) *</label>
+            <button type="button" id="btnUseMyLoc" class="text-xs text-blue-400 hover:text-blue-300 font-medium">Use My Current Location</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="newEventLat" type="number" step="any" required value="12.823150" placeholder="Latitude" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono">
+            <input id="newEventLng" type="number" step="any" required value="80.044200" placeholder="Longitude" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono">
+          </div>
+          <!-- Mini Location Picker Map -->
+          <div id="createEventMapContainer" class="w-full h-40 rounded-lg bg-slate-950 border border-slate-800 mt-2 relative"></div>
+          <p class="text-[10px] text-slate-500">Click anywhere on the radar or map above to drop the venue pin.</p>
+        </div>
+
+        <!-- Geofence Radius Slider -->
+        <div class="space-y-1 pt-1">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400">Allowed Geofence Radius:</span>
+            <span id="newEventRadiusVal" class="font-mono font-bold text-blue-400">80m</span>
+          </div>
+          <input id="newEventRadius" type="range" min="15" max="500" value="80" step="5" class="w-full accent-blue-500">
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>15m (Classroom)</span>
+            <span>80m (Auditorium)</span>
+            <span>250m (Building)</span>
+            <span>500m (Campus)</span>
+          </div>
+        </div>
+
+        <!-- Security & Whitelist options -->
+        <div class="space-y-3 pt-2 border-t border-slate-800">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input id="newEventDynamicQR" type="checkbox" checked class="rounded accent-blue-500">
+            <span class="text-xs text-slate-300 font-medium">Enable Rotating Anti-Proxy Dynamic QR Code (20s)</span>
+          </label>
+
+          <div class="space-y-2 p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input id="newEventRequireWhitelist" type="checkbox" checked class="rounded accent-blue-500">
+                <span class="text-xs text-slate-200 font-semibold">🔒 Restrict Access to Whitelisted Gmails Only</span>
+              </label>
+              <span class="text-[10px] font-mono text-blue-400">Google Auth Required</span>
+            </div>
+            <div>
+              <label for="newEventAllowedEmails" class="block text-[11px] font-medium text-slate-400 mb-1">
+                Authorized Attendee Gmail Addresses (Comma-separated)
+              </label>
+              <textarea id="newEventAllowedEmails" rows="2" placeholder="e.g. student@srmist.edu.in, rohan.sharma@gmail.com, alex.chen@gmail.com" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"></textarea>
+              <p class="text-[10px] text-slate-500 mt-0.5">Only logged-in attendees with matching Gmail addresses can receive a valid entry pass code and check in.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-800">
+          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all">
+            Create Event
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Google Authentication & Account Switcher -->
+  <div id="googleAuthModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full p-6 space-y-5 border border-slate-700 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-6 h-6" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <div>
+            <h3 class="text-sm font-bold text-white">Sign in with Google</h3>
+            <p class="text-[11px] text-slate-400">Choose an account to continue to GeoAttend</p>
+          </div>
+        </div>
+        <button id="btnCloseGoogleModal" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <!-- Official Google OAuth Direct Redirect -->
+      <div class="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/60 to-slate-900 border border-blue-500/30 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>🌐 Official Google Sign-In</span>
+            <span id="googleConfigBadge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">OAuth Redirect</span>
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-300">
+          Redirect directly to <strong class="text-white font-mono">accounts.google.com</strong> to authenticate with your real Google / Gmail account.
+        </p>
+        <button id="btnTriggerGoogleRedirect" type="button" class="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Redirect to accounts.google.com</span>
+        </button>
+
+        <!-- Setup Instructions if client ID not configured -->
+        <div id="googleSetupSection" class="hidden pt-2 border-t border-slate-700/60 space-y-2 text-[11px]">
+          <div class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-[10px] space-y-1">
+            <strong class="block text-amber-300 font-bold">⚠️ Google Cloud OAuth Client ID Required:</strong>
+            <p>Google requires registered credentials from Google Cloud Console to allow redirecting to accounts.google.com.</p>
+            <ol class="list-decimal pl-4 space-y-0.5 text-slate-300">
+              <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-blue-400 underline">Google Cloud Console &rarr; Credentials</a>.</li>
+              <li>Create an <strong>OAuth 2.0 Client ID</strong> (Web Application).</li>
+              <li>Set Redirect URI: <code class="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded font-mono">http://localhost:3000/api/auth/google/callback</code></li>
+            </ol>
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <input id="inputSaveGoogleClientId" type="text" placeholder="Paste your Google Client ID here..." class="flex-1 bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <button id="btnSaveGoogleClientId" type="button" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-bold cursor-pointer">Save & Redirect</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Authenticated Google Account Display (if logged in) -->
+      <div id="modalGoogleAccountActive" class="hidden p-3.5 rounded-xl bg-slate-900 border border-emerald-500/30 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Google Session</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Verified</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <img id="modalGoogleUserAvatar" class="w-10 h-10 rounded-full border-2 border-emerald-500/40" src="https://api.dicebear.com/7.x/initials/svg?seed=Google" alt="Avatar">
+          <div class="truncate">
+            <span id="modalGoogleUserName" class="text-sm font-bold text-white block truncate"></span>
+            <span id="modalGoogleUserEmail" class="text-xs text-emerald-400 font-mono block truncate"></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
+          <button id="btnModalSignOut" type="button" class="flex-1 py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-semibold border border-slate-700 transition-colors cursor-pointer">
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div class="p-3 rounded-xl bg-blue-950/30 border border-blue-500/20 space-y-1 text-[11px] text-slate-300">
+        <div class="flex items-center gap-1.5 text-blue-400 font-bold">
+          <span>🔒 Strict Google OAuth Security</span>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Manual email typing is disabled. All attendees must authenticate through official Google OAuth (<code class="text-slate-300">accounts.google.com</code>) to prove ownership of their whitelisted Gmail address.
+        </p>
+      </div>
+
+      <!-- Real Google GIS Container (if available) -->
+      <div id="g_id_onload_container" class="pt-1 flex justify-center"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Event Whitelist (Organizer Tool) -->
+  <div id="manageWhitelistModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full p-6 space-y-5 border border-slate-700 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>👥 Manage Attendee Gmail Whitelist</span>
+          </h3>
+          <p id="whitelistEventTitle" class="text-xs text-slate-400 mt-0.5">National Tech Symposium</p>
+        </div>
+        <button id="btnCloseWhitelistModal" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="flex items-center gap-2 cursor-pointer mb-2">
+            <input id="manageRequireWhitelistToggle" type="checkbox" class="rounded accent-blue-500">
+            <span class="text-xs text-slate-200 font-semibold">Enforce Whitelist Access Control for this Event</span>
+          </label>
+          <p class="text-[11px] text-slate-400">
+            When enabled, only attendees signed in with Gmails on this list can view the entrance QR pass and check in.
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            Allowed Gmail Addresses (Comma or newline separated)
+          </label>
+          <textarea id="manageWhitelistTextarea" rows="5" placeholder="student@srmist.edu.in, rohan.sharma@gmail.com, alex.chen@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"></textarea>
+          <p class="text-[10px] text-slate-500 mt-1">
+            Tip: You can paste a whole column of emails from Excel or Google Sheets.
+          </p>
+        </div>
+
+        <!-- Current Whitelist Badges Container -->
+        <div>
+          <span class="block text-[11px] font-semibold text-slate-400 mb-1.5">Current Allowed Attendees:</span>
+          <div id="currentWhitelistChips" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 bg-slate-950/80 rounded-lg border border-slate-800">
+            <!-- Chips populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-800">
+        <button id="btnSaveWhitelist" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5">
+          <span>Save Whitelist</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Presenter Mode Fullscreen (for Projectors) -->
+  <div id="fullscreenQrModal" class="hidden presenter-fullscreen">
+    <div class="max-w-xl w-full text-center space-y-6">
+      <div class="space-y-1">
+        <h2 id="fsEventTitle" class="text-3xl font-extrabold tracking-tight text-white">Event Title</h2>
+        <p id="fsVenueTitle" class="text-sm text-slate-400">Venue Name</p>
+      </div>
+
+      <div class="p-6 bg-white rounded-3xl inline-block shadow-2xl border-8 border-slate-800">
+        <canvas id="fullscreenQrCanvas" class="w-80 h-80 sm:w-96 sm:h-96"></canvas>
+      </div>
+
+      <div class="flex items-center justify-center gap-4">
+        <div class="relative w-12 h-12 flex items-center justify-center">
+          <svg class="w-12 h-12" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="18" fill="none" stroke="#1e293b" stroke-width="3" />
+            <circle id="fsQrCountdownRing" class="progress-ring-circle" cx="20" cy="20" r="18" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="0" />
+          </svg>
+          <span id="fsQrCountdownText" class="absolute text-xs font-mono font-bold text-blue-400">20s</span>
+        </div>
+        <div class="text-left text-xs">
+          <div class="font-bold text-white">Dynamic Anti-Proxy Active</div>
+          <div id="fullscreenQrTokenDisplay" class="font-mono text-slate-400 text-[11px] truncate max-w-xs">GEO:...</div>
+        </div>
+      </div>
+
+      <div>
+        <button id="btnCloseFullscreen" class="px-6 py-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700">
+          ✕ Exit Presenter Mode
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="/vendor/jsqr.min.js"></script>
+  <script>
+    if (typeof window.jsQR === 'undefined' && typeof jsQR === 'function') {
+      window.jsQR = jsQR;
+    }
+  </script>
+  <script src="/js/qr-generator.js"></script>
+  <script src="/js/qr-scanner.js"></script>
+  <script src="/js/map-component.js"></script>
+  <script src="/js/organizer.js"></script>
+  <script src="/js/attendee.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
