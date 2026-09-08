@@ -358,7 +358,7 @@ Tables are automatically created and seeded on initial launch:
 ## 🚢 Deployment Guide
 
 ### Deploying to Vercel (Live Production)
-- **Live Production URL**: [https://foodwastage-three.vercel.app](https://foodwastage-three.vercel.app)
+- **Live Production URL**: [https://geoattend-live.vercel.app](https://geoattend-live.vercel.app) *(or [https://geoattend-inky.vercel.app](https://geoattend-inky.vercel.app))*
 
 1. Deploy directly with the Vercel CLI:
    ```bash
