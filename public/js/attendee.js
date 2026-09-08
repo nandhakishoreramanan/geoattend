@@ -495,18 +495,6 @@
         btnSubmit.addEventListener('click', () => this.handleCheckIn());
       }
 
-      // Quick 1-tap pass check-in button
-      const btnQuickEnterPass = document.getElementById('btnQuickEnterPass');
-      if (btnQuickEnterPass) {
-        btnQuickEnterPass.addEventListener('click', () => {
-          if (this.activePersonalToken) {
-            const input = document.getElementById('attendeeScannedToken');
-            if (input) input.value = this.activePersonalToken;
-          }
-          this.handleCheckIn();
-        });
-      }
-
       // Live GPS Button
       const btnGetGPS = document.getElementById('btnGetAttendeeGPS');
       if (btnGetGPS) {
@@ -800,12 +788,7 @@
       const name = document.getElementById('attendeeName')?.value.trim();
       const studentId = document.getElementById('attendeeStudentId')?.value.trim();
       const email = user.email; // Strictly use authenticated Google email
-      let token = document.getElementById('attendeeScannedToken')?.value.trim();
-      if (!token && this.activePersonalToken) {
-        token = this.activePersonalToken;
-        const input = document.getElementById('attendeeScannedToken');
-        if (input) input.value = token;
-      }
+      const token = document.getElementById('attendeeScannedToken')?.value.trim();
 
       const emailInput = document.getElementById('attendeeEmail');
       if (emailInput) {
@@ -814,12 +797,17 @@
       }
 
       if (!name || !studentId) {
-        window.App?.showToast('Please enter your Full Name and Student ID', 'warning');
+        window.App?.showToast('Please enter your Full Name and Registration ID', 'warning');
         return;
       }
 
       if (!token) {
-        window.App?.showToast('Please scan the event QR code or select an event above', 'warning');
+        window.App?.showToast('Scan Required: Please scan the live event QR code with your camera or upload a QR snapshot to enter.', 'warning');
+        const startCamBtn = document.getElementById('btnStartCamera');
+        if (startCamBtn) {
+          startCamBtn.classList.add('animate-pulse');
+          setTimeout(() => startCamBtn.classList.remove('animate-pulse'), 2500);
+        }
         return;
       }
 

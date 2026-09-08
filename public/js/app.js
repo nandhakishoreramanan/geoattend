@@ -11,6 +11,7 @@
     authToken: null,
 
     init() {
+      this.initTheme();
       this.loadStoredAuth();
       this.bindNav();
       this.bindGoogleAuth();
@@ -88,6 +89,41 @@
       }
       if (btnRoleAttendee) {
         btnRoleAttendee.addEventListener('click', () => this.switchRole('attendee'));
+      }
+    },
+
+    initTheme() {
+      const saved = localStorage.getItem('geoattend_theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = saved ? saved : (prefersDark ? 'dark' : 'light');
+      this.setTheme(initialTheme);
+
+      const toggleBtn = document.getElementById('btnToggleDarkMode');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+          const next = current === 'dark' ? 'light' : 'dark';
+          this.setTheme(next);
+          this.showToast(`${next === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'} Activated`, 'info');
+        });
+      }
+    },
+
+    setTheme(theme) {
+      const moon = document.getElementById('iconDarkModeMoon');
+      const sun = document.getElementById('iconDarkModeSun');
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('geoattend_theme', 'dark');
+        if (moon) moon.classList.add('hidden');
+        if (sun) sun.classList.remove('hidden');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('geoattend_theme', 'light');
+        if (moon) moon.classList.remove('hidden');
+        if (sun) sun.classList.add('hidden');
       }
     },
 
