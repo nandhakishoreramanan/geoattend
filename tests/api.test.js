@@ -133,6 +133,16 @@ async function runTests() {
     const expiredToken = `GEO:evt_test:1000:aabbccddeeff`;
     const resultExpired = validateToken(expiredToken, 'evt_test', secret, true);
     assert.strictEqual(resultExpired.valid, false);
+
+    // Reject token belonging to a different event
+    const diffEventToken = generateDynamicToken('evt_different_event', secret).token;
+    const resultDiff = validateToken(diffEventToken, 'evt_test', secret, true);
+    assert.strictEqual(resultDiff.valid, false);
+    assert.ok(resultDiff.reason.includes('different event'));
+
+    // Reject non-dynamic random string when dynamic QR is required
+    const resultRandom = validateToken('https://google.com', 'evt_test', secret, true);
+    assert.strictEqual(resultRandom.valid, false);
   });
 
   // --- UNIT TESTS: JWT AUTHENTICATION ---

@@ -71,11 +71,7 @@ function validateToken(submittedToken, eventId, secretKey, isDynamic = false, st
 
   // Dynamic token format: GEO:eventId:timeSlice:signature
   if (!cleanToken.startsWith('GEO:')) {
-    // Also allow static code if organizer switched modes
-    if (cleanToken === staticCode || cleanToken === eventId) {
-      return { valid: true };
-    }
-    return { valid: false, reason: 'Invalid token structure. Live QR code required.' };
+    return { valid: false, reason: 'Invalid token structure. Live dynamic QR code required.' };
   }
 
   const parts = cleanToken.split(':');

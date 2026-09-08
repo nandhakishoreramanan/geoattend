@@ -849,9 +849,29 @@ async function handleRequest(req, res) {
       }
 
       // Unwrap personal pass token (PASS:eventId:email:token) if provided
-      let checkToken = token || event.static_code;
-      if (checkToken && checkToken.startsWith(`PASS:${event.id}:`)) {
+      let checkToken = (token || '').trim();
+      if (!checkToken) {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Scan Required: Please scan the live event QR code to check in.'
+        });
+      }
+
+      if (checkToken.startsWith('PASS:')) {
+        if (!checkToken.startsWith(`PASS:${event.id}:`)) {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'QR Code Mismatch: This pass was issued for a different event.'
+          });
+        }
         const passParts = checkToken.split(':');
+        const passEmail = decodeURIComponent(passParts[2] || '').toLowerCase();
+        if (passEmail && attendeeEmail && passEmail !== attendeeEmail) {
+          return sendJson(res, 403, {
+            success: false,
+            error: `Security Violation: This personal pass belongs to ${passEmail}, not ${attendeeEmail}.`
+          });
+        }
         checkToken = passParts.slice(3).join(':');
       }
 

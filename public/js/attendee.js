@@ -150,10 +150,6 @@
             });
           }
 
-          // Pre-populate attendee inputs
-          const tokenInput = document.getElementById('attendeeScannedToken');
-          if (tokenInput) tokenInput.value = data.entry_token;
-
           const nameInput = document.getElementById('attendeeName');
           if (nameInput && (!nameInput.value || nameInput.value === 'Rohan Sharma')) {
             nameInput.value = data.name || user.name || user.email.split('@')[0];
@@ -590,19 +586,9 @@
       // Refresh personal Google Pass card for this event
       await this.refreshPassCard();
 
-      // If activePersonalToken wasn't set, fetch standard dynamic token as fallback
-      try {
-        const res = await fetch(`/api/events/${evt.id}/qr-token`);
-        if (res.ok) {
-          const data = await res.json();
-          if (!this.activePersonalToken) {
-            const input = document.getElementById('attendeeScannedToken');
-            if (input && !input.value) {
-              input.value = data.token;
-            }
-          }
-        }
-      } catch (e) {}
+      // Clear any previous scanned token so the attendee scans for this specific event
+      const tokenInput = document.getElementById('attendeeScannedToken');
+      if (tokenInput) tokenInput.value = '';
 
       if (showToast) {
         window.App?.showToast(`Selected Event: "${evt.title}" (${evt.venue_name})`, 'info');
@@ -863,35 +849,81 @@
       this.stopLiveScanner();
       const trimmed = (scannedText || '').trim();
       const input = document.getElementById('attendeeScannedToken');
+
+      // 1. Basic format validation
+      const isGeo = trimmed.startsWith('GEO:');
+      const isPass = trimmed.startsWith('PASS:');
+      const activeEvent = this.selectedEventId ? (this.eventsList || []).find(e => e.id === this.selectedEventId) : null;
+      const isStaticMatch = activeEvent && (trimmed === activeEvent.static_code || trimmed === activeEvent.id);
+
+      if (!isGeo && !isPass && !isStaticMatch) {
+        if (input) {
+          input.value = '';
+          input.classList.add('ring-2', 'ring-rose-500');
+          setTimeout(() => input.classList.remove('ring-2', 'ring-rose-500'), 2500);
+        }
+        window.App?.showToast('Invalid QR Code: Unrecognized format. Please scan an authentic event QR code.', 'error');
+        return;
+      }
+
+      // 2. Validate Event Matching
+      let tokenEventId = null;
+      if (isGeo || isPass) {
+        const parts = trimmed.split(':');
+        tokenEventId = parts[1];
+      } else if (isStaticMatch) {
+        tokenEventId = activeEvent.id;
+      }
+
+      if (this.selectedEventId && tokenEventId !== this.selectedEventId) {
+        const selectedEvt = (this.eventsList || []).find(e => e.id === this.selectedEventId);
+        const scannedEvt = (this.eventsList || []).find(e => e.id === tokenEventId);
+        const scannedTitle = scannedEvt ? `"${scannedEvt.title}"` : 'a different event';
+        const selectedTitle = selectedEvt ? `"${selectedEvt.title}"` : 'the selected event';
+
+        if (input) {
+          input.value = '';
+          input.classList.add('ring-2', 'ring-rose-500');
+          setTimeout(() => input.classList.remove('ring-2', 'ring-rose-500'), 2500);
+        }
+        window.App?.showToast(`QR Code Mismatch: This QR belongs to ${scannedTitle}, not ${selectedTitle}. Scan rejected.`, 'error');
+        return;
+      }
+
+      // 3. If no event was selected, find and select the matching event
+      if (!this.selectedEventId && tokenEventId) {
+        const matchingEvt = (this.eventsList || []).find(e => e.id === tokenEventId);
+        if (matchingEvt) {
+          this.selectEvent(matchingEvt, false);
+        } else {
+          if (input) input.value = '';
+          window.App?.showToast('QR Code Rejected: The event in this QR code is not in the active catalog.', 'error');
+          return;
+        }
+      }
+
+      // 4. Validate personal pass ownership if PASS:
+      if (isPass) {
+        const parts = trimmed.split(':');
+        const passEmail = decodeURIComponent(parts[2] || '').toLowerCase();
+        const currentUserEmail = (this.currentUser?.email || window.App?.currentUser?.email || '').toLowerCase();
+        if (passEmail && currentUserEmail && passEmail !== currentUserEmail) {
+          if (input) input.value = '';
+          input?.classList.add('ring-2', 'ring-rose-500');
+          setTimeout(() => input?.classList.remove('ring-2', 'ring-rose-500'), 2500);
+          window.App?.showToast(`Security Violation: This QR pass belongs to ${passEmail}, not your account (${currentUserEmail}).`, 'error');
+          return;
+        }
+      }
+
+      // QR Code passed all validation!
       if (input) {
         input.value = trimmed;
-        input.classList.add('ring-2', 'ring-blue-500');
-        setTimeout(() => input.classList.remove('ring-2', 'ring-blue-500'), 1500);
+        input.classList.add('ring-2', 'ring-emerald-500');
+        setTimeout(() => input.classList.remove('ring-2', 'ring-emerald-500'), 2000);
       }
 
-      // If QR contains event signature (GEO:eventId:timestamp:signature) or personal pass (PASS:eventId:email:token), auto-select event
-      if (trimmed.startsWith('GEO:')) {
-        const parts = trimmed.split(':');
-        if (parts[1]) {
-          this.selectedEventId = parts[1];
-          this.renderUpcomingEvents(this.eventsList);
-        }
-      } else if (trimmed.startsWith('PASS:')) {
-        const parts = trimmed.split(':');
-        if (parts[1]) {
-          this.selectedEventId = parts[1];
-          this.renderUpcomingEvents(this.eventsList);
-        }
-        if (parts[2]) {
-          const passEmail = decodeURIComponent(parts[2]).toLowerCase();
-          const currentUserEmail = (this.currentUser?.email || window.App?.currentUser?.email || '').toLowerCase();
-          if (currentUserEmail && passEmail !== currentUserEmail) {
-            window.App?.showToast(`Security Warning: This QR pass was generated for ${passEmail}, but you are signed in as ${currentUserEmail}.`, 'warning');
-          }
-        }
-      }
-
-      window.App?.showToast('QR Code captured successfully!', 'success');
+      window.App?.showToast('QR Code verified for event!', 'success');
     },
 
     async processUploadedFile(file) {
@@ -905,6 +937,10 @@
       }
 
       this.stopLiveScanner();
+
+      // Clear input before decoding so a failed/unrelated image doesn't retain old token
+      const input = document.getElementById('attendeeScannedToken');
+      if (input) input.value = '';
 
       // Display preview in viewfinder
       const previewImg = document.getElementById('uploadedImagePreview');
@@ -927,12 +963,9 @@
 
         const scannedCode = await this.scanner.scanImageFile(file);
         if (scannedCode) {
-          const input = document.getElementById('attendeeScannedToken');
-          if (!input || input.value !== scannedCode.trim()) {
-            this.onQRCodeScanned(scannedCode);
-          }
+          this.onQRCodeScanned(scannedCode);
         } else {
-          throw new Error('No QR code detected in image');
+          throw new Error('No valid QR code detected in image');
         }
       } catch (err) {
         console.warn('QR image decoding error:', err);
@@ -1154,19 +1187,30 @@
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = 'Verifying Attendance & Geofence...';
       }
-
       try {
-        let eventId = this.selectedEventId || token;
-        if (token.startsWith('GEO:')) {
+        if (!this.selectedEventId) {
+          window.App?.showToast('Please select the event you are attending from the catalog.', 'warning');
+          return;
+        }
+
+        const activeEvt = (this.eventsList || []).find(e => e.id === this.selectedEventId);
+
+        // Strictly verify token matches the selected event
+        if (token.startsWith('GEO:') || token.startsWith('PASS:')) {
           const parts = token.split(':');
-          if (parts[1]) eventId = parts[1];
-        } else if (token.startsWith('PASS:')) {
-          const parts = token.split(':');
-          if (parts[1]) eventId = parts[1];
+          if (parts[1] !== this.selectedEventId) {
+            const scannedEvt = (this.eventsList || []).find(e => e.id === parts[1]);
+            const scannedName = scannedEvt ? `"${scannedEvt.title}"` : 'a different event';
+            window.App?.showToast(`QR Code Mismatch: This QR belongs to ${scannedName}. You are checking in for "${activeEvt?.title || 'a different event'}".`, 'error');
+            return;
+          }
+        } else if (activeEvt && token !== activeEvt.static_code && token !== activeEvt.id) {
+          window.App?.showToast(`Invalid QR Code: Scanned code does not match "${activeEvt.title}".`, 'error');
+          return;
         }
 
         const payload = {
-          event_id: eventId,
+          event_id: this.selectedEventId,
           token,
           name,
           student_id: studentId,
