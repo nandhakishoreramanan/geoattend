@@ -119,7 +119,7 @@
 
       const btnExportPdf = document.getElementById('btnExportPdf');
       if (btnExportPdf) {
-        btnExportPdf.addEventListener('click', () => window.print());
+        btnExportPdf.addEventListener('click', () => this.exportPdf());
       }
 
       // Presenter Fullscreen Toggle
@@ -612,6 +612,7 @@
     },
 
     renderStats(stats) {
+      this.lastStats = stats;
       const m = stats.metrics;
       document.getElementById('statTotalCheckins').textContent = m.total;
       document.getElementById('statVerifiedCount').textContent = m.verified;
@@ -1139,6 +1140,366 @@
     exportCsv() {
       if (!this.currentEventId) return;
       window.location.href = `/api/events/${this.currentEventId}/export/csv`;
+    },
+
+    exportPdf() {
+      if (!this.currentEventId) {
+        window.App?.showToast('Please select an event first', 'warning');
+        return;
+      }
+
+      const btnExportPdf = document.getElementById('btnExportPdf');
+      const originalBtnHtml = btnExportPdf ? btnExportPdf.innerHTML : null;
+      if (btnExportPdf) {
+        btnExportPdf.disabled = true;
+        btnExportPdf.innerHTML = `
+          <svg class="w-3.5 h-3.5 animate-spin text-rose-600" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Preparing PDF...</span>
+        `;
+      }
+
+      const restoreBtn = () => {
+        if (btnExportPdf && originalBtnHtml) {
+          btnExportPdf.disabled = false;
+          btnExportPdf.innerHTML = originalBtnHtml;
+        }
+      };
+
+      const event = this.events?.find(e => e.id === this.currentEventId) || {
+        title: document.getElementById('currentEventTitle')?.textContent || 'Event Attendance',
+        venue_name: document.getElementById('currentEventVenue')?.textContent || 'Venue',
+        radius_meters: document.getElementById('currentEventRadius')?.textContent?.replace('m', '') || '100',
+        created_at: new Date().toISOString()
+      };
+
+      const attendees = this.attendees || [];
+      const m = this.lastStats?.metrics || {
+        total: attendees.length,
+        verified: attendees.filter(a => a.status === 'VERIFIED').length,
+        breaches: attendees.filter(a => a.status === 'OUT_OF_BOUNDS' || a.status === 'FLAGGED').length,
+        passRate: attendees.length > 0 ? Math.round((attendees.filter(a => a.status === 'VERIFIED').length / attendees.length) * 100) : 0
+      };
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      const rowsHtml = attendees.length === 0
+        ? `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 24px;">No attendees checked in yet.</td></tr>`
+        : attendees.map((a, idx) => {
+            const timeStr = a.checkin_time ? new Date(a.checkin_time).toLocaleString() : 'N/A';
+            let badgeClass = 'badge-flagged';
+            let badgeLabel = a.status || 'UNKNOWN';
+            if (a.status === 'VERIFIED') {
+              badgeClass = 'badge-verified';
+              badgeLabel = 'VERIFIED';
+            } else if (a.status === 'OUT_OF_BOUNDS') {
+              badgeClass = 'badge-out';
+              badgeLabel = 'OUT OF BOUNDS';
+            } else if (a.status === 'FLAGGED') {
+              badgeClass = 'badge-flagged';
+              badgeLabel = 'SECURITY BREACH';
+            }
+
+            return `
+              <tr>
+                <td style="font-weight: 600; color: #64748b; width: 35px; text-align: center;">${idx + 1}</td>
+                <td style="font-weight: 700; color: #0f172a;">${escapeHtml(a.name)}</td>
+                <td style="font-family: monospace; color: #475569;">${escapeHtml(a.student_id)}</td>
+                <td style="font-family: monospace; color: #0284c7;">${escapeHtml(a.email || 'N/A')}</td>
+                <td style="font-size: 8pt; color: #64748b;">${escapeHtml(timeStr)}</td>
+                <td style="font-family: monospace; font-weight: 600;">${Math.round(a.distance_meters || 0)}m</td>
+                <td><span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span></td>
+              </tr>
+            `;
+          }).join('');
+
+      const printHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Attendance_Report_${escapeHtml(event.title || 'Event')}.pdf</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm 14mm;
+    }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 9.5pt;
+      line-height: 1.35;
+    }
+    .header {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 4px 0;
+    }
+    .subtitle {
+      font-size: 9pt;
+      color: #64748b;
+      margin: 0;
+    }
+    .report-badge {
+      text-align: right;
+    }
+    .badge-report {
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .gen-date {
+      font-size: 7.5pt;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .meta-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+    .meta-label {
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .meta-value {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .stat-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+      background: #ffffff;
+    }
+    .stat-num {
+      font-size: 16pt;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+    .stat-name {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .stat-verified { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
+    .stat-breach { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
+    .stat-rate { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+    .stat-total { border-color: #cbd5e1; background: #f8fafc; color: #334155; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+      margin-top: 6px;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      text-align: left;
+      padding: 7px 8px;
+      border-bottom: 2px solid #cbd5e1;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+    tr:nth-child(even) td {
+      background-color: #fafbfc;
+    }
+    tr {
+      page-break-inside: avoid;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 9999px;
+      font-size: 7pt;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .badge-verified { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .badge-out { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .badge-flagged { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    .footer {
+      margin-top: 20px;
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="title">${escapeHtml(event.title)}</div>
+      <div class="subtitle">Official Geo-Fenced Attendance & Verification Audit Report</div>
+    </div>
+    <div class="report-badge">
+      <span class="badge-report">GeoAttend Audit</span>
+      <div class="gen-date">Generated: ${new Date().toLocaleString()}</div>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-card">
+      <div class="meta-label">Venue Location</div>
+      <div class="meta-value">${escapeHtml(event.venue_name || 'N/A')}</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Allowed Perimeter</div>
+      <div class="meta-value">${escapeHtml(String(event.radius_meters || 100))}m Geofence</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Verification Mode</div>
+      <div class="meta-value">${event.dynamic_qr ? 'Rotating QR (20s)' : 'Static Event QR'}</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Event ID</div>
+      <div class="meta-value" style="font-family: monospace;">${escapeHtml(event.id || 'N/A')}</div>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card stat-total">
+      <div class="stat-num">${m.total ?? 0}</div>
+      <div class="stat-name">Total Check-ins</div>
+    </div>
+    <div class="stat-card stat-verified">
+      <div class="stat-num">${m.verified ?? 0}</div>
+      <div class="stat-name">Verified Present</div>
+    </div>
+    <div class="stat-card stat-breach">
+      <div class="stat-num">${m.breaches ?? 0}</div>
+      <div class="stat-name">Security Breaches</div>
+    </div>
+    <div class="stat-card stat-rate">
+      <div class="stat-num">${m.passRate ?? 0}%</div>
+      <div class="stat-name">Verification Pass Rate</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30px; text-align: center;">#</th>
+        <th>Attendee Name</th>
+        <th>Registration ID</th>
+        <th>Verified Email</th>
+        <th>Timestamp</th>
+        <th>GPS Distance</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>GeoAttend 3-Pillar Attendance Verification System (Google Identity • GPS Perimeter • Static/Dynamic QR)</span>
+    <span>Official Institutional Record</span>
+  </div>
+</body>
+</html>`;
+
+      // Use an isolated lightweight iframe for instantaneous, zero-lag PDF generation
+      let iframe = document.getElementById('geoattend_pdf_frame');
+      if (iframe) iframe.remove();
+
+      iframe = document.createElement('iframe');
+      iframe.id = 'geoattend_pdf_frame';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(printHtml);
+      iframeDoc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {
+          console.error('Iframe print error, falling back:', e);
+          window.print();
+        } finally {
+          restoreBtn();
+          setTimeout(() => {
+            if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          }, 30000);
+        }
+      }, 50);
     }
   };
 

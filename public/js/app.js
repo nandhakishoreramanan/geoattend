@@ -209,17 +209,6 @@
         });
       }
 
-      // Theme toggle in drawer
-      const btnToggleTheme = document.getElementById('drawerToggleTheme');
-      if (btnToggleTheme) {
-        btnToggleTheme.addEventListener('click', () => {
-          const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-          const next = current === 'dark' ? 'light' : 'dark';
-          this.setTheme(next);
-          this.showToast(`${next === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'} Activated`, 'info');
-        });
-      }
-
       // Auth action in drawer
       const btnDrawerAuth = document.getElementById('drawerAuthActionBtn');
       if (btnDrawerAuth) {
@@ -276,47 +265,21 @@
     },
 
     updateDrawerThemeUI() {
-      const isDark = document.documentElement.classList.contains('dark');
-      const themeIcon = document.getElementById('drawerThemeIcon');
-      const themeText = document.getElementById('drawerThemeText');
-      if (themeIcon) themeIcon.textContent = isDark ? '🌙' : '☀️';
-      if (themeText) themeText.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+      // Light theme permanently enforced
     },
 
     initTheme() {
-      const saved = localStorage.getItem('geoattend_theme');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = saved ? saved : (prefersDark ? 'dark' : 'light');
-      this.setTheme(initialTheme);
-
-      const toggleBtn = document.getElementById('btnToggleDarkMode');
-      if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-          const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-          const next = current === 'dark' ? 'light' : 'dark';
-          this.setTheme(next);
-          this.showToast(`${next === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'} Activated`, 'info');
-        });
-      }
+      document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
+      try {
+        localStorage.removeItem('geoattend_theme');
+        localStorage.setItem('geoattend_theme', 'light');
+      } catch (e) {}
     },
 
-    setTheme(theme) {
-      const moon = document.getElementById('iconDarkModeMoon');
-      const sun = document.getElementById('iconDarkModeSun');
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('geoattend_theme', 'dark');
-        if (moon) moon.classList.add('hidden');
-        if (sun) sun.classList.remove('hidden');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem('geoattend_theme', 'light');
-        if (moon) moon.classList.remove('hidden');
-        if (sun) sun.classList.add('hidden');
-      }
-      this.updateDrawerThemeUI();
+    setTheme() {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
     },
 
     bindGoogleAuth() {
