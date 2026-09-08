@@ -629,355 +629,328 @@
   <!-- ========================================================================= -->
   <section id="attendeePortal" class="hidden flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-    <!-- TOP BENTO ROW: Attendee Hero Terminal & Identification (7 cols) + Google Entry Pass Vault (5 cols) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- UNIFIED ATTENDEE VERIFICATION TERMINAL -->
+    <div class="bento-card p-6 sm:p-8 relative overflow-hidden bg-white dark:bg-[#111726]">
+      <!-- Decorative ambient gradient -->
+      <div class="absolute -top-24 -right-24 w-80 h-80 bg-gradient-to-br from-amber-100/40 via-rose-100/30 to-blue-100/30 dark:from-blue-950/20 dark:to-purple-950/20 rounded-full blur-3xl pointer-events-none -z-0"></div>
 
-      <!-- HERO BENTO CARD (Col span 7): Attendee Verification Terminal & Form -->
-      <div class="lg:col-span-7 bento-card p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden">
-        <!-- Ambient decorative blur -->
-        <div class="absolute -top-24 -right-24 w-80 h-80 bg-gradient-to-br from-amber-100/50 to-rose-100/40 rounded-full blur-3xl pointer-events-none -z-0"></div>
-
-        <div class="relative z-10 space-y-6">
-          <!-- Visor badge + Active User Badge Header -->
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="visor-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold text-slate-800">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Attendee Verification Terminal</span>
+      <div class="relative z-10 space-y-6">
+        <!-- Top Terminal Bar: Visor Badge, 3-Pillar Security Tag, User Badge -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="visor-badge inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Attendance Verification Terminal</span>
             </div>
-            <div id="attendeeUserBadge" class="flex items-center gap-2"></div>
+            <span class="px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              3-Pillar Verification: Google • GPS • 20s Dynamic QR
+            </span>
           </div>
+          <div id="attendeeUserBadge" class="flex items-center gap-2"></div>
+        </div>
 
-          <!-- Big Bold Title with curved doodle arrow -->
-          <div class="space-y-1 relative">
-            <div class="flex items-start justify-between">
-              <h1 class="font-display text-4xl sm:text-5xl font-black text-slate-950 tracking-tight leading-[1.05]">
-                Check in <br>
-                <span class="text-slate-900">beyond limits.</span>
-              </h1>
-              <!-- Playful visual accent -->
-              <div class="hidden sm:block text-amber-500 transform rotate-12 mt-1 mr-4 animate-float">
-                <svg class="w-12 h-12" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
-                  <path d="M15,20 C40,15 70,30 65,65 C60,85 40,85 30,70 C20,55 35,35 60,40 C75,45 85,60 85,75" />
-                  <polyline points="75,75 85,85 92,72" />
-                </svg>
-              </div>
-            </div>
-            <p class="text-xs text-slate-500 font-medium max-w-lg pt-1">
-              Official SRM campus check-in gatekeeper. Authenticate your verified Google credentials, capture the live venue QR token, and confirm geofence coordinates.
+        <!-- Headline & Description with playful visual accent -->
+        <div class="flex items-start justify-between">
+          <div class="space-y-1 max-w-2xl">
+            <h1 class="font-display text-3xl sm:text-4xl font-black text-slate-950 dark:text-white tracking-tight leading-[1.08]">
+              Check in <span class="text-slate-900 dark:text-slate-100">beyond limits.</span>
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium pt-1">
+              Official SRM campus check-in terminal. Attendance requires 3 verified pillars: authenticated Google account, real-time device location inside venue boundary, and the live 20-second dynamic rotating QR code.
             </p>
           </div>
-
-          <!-- Checkin Form Section (Inputs) -->
-          <div id="checkinFormSection" class="space-y-4 pt-2">
-            <!-- Identification row -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label for="attendeeName" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Full Name</label>
-                <input id="attendeeName" type="text" placeholder="e.g. Rohan Sharma" class="w-full bg-slate-100/80 border border-slate-300/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white font-medium transition-all">
-              </div>
-              <div>
-                <label for="attendeeStudentId" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Registration ID</label>
-                <input id="attendeeStudentId" type="text" placeholder="e.g. RA2111003010123" class="w-full bg-slate-100/80 border border-slate-300/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 font-mono focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white transition-all">
-              </div>
-            </div>
-
-            <!-- Verified Google Email -->
-            <div>
-              <label for="attendeeEmail" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Verified Google Email Address</label>
-              <div class="relative">
-                <input id="attendeeEmail" type="email" readonly placeholder="Sign in with Google to unlock verified email" class="w-full bg-emerald-50/80 border border-emerald-300 rounded-xl pl-8 pr-32 py-2.5 text-xs text-emerald-900 font-mono cursor-not-allowed select-all focus:outline-none font-semibold">
-                <span class="absolute left-2.5 top-3 text-xs text-emerald-600 font-bold">🔒</span>
-                <span class="absolute right-2 top-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-sm">Verified Google</span>
-              </div>
-              <p class="text-[10px] text-slate-400 mt-1 font-medium">
-                Secured by Google OAuth. Manual entry disabled to eliminate proxy check-ins.
-              </p>
-            </div>
-
-            <!-- Scanned Token Input & Shortcuts -->
-            <div>
-              <label for="attendeeScannedToken" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Scanned QR Token</label>
-              <div class="flex items-center gap-2">
-                <div class="relative flex-1">
-                  <input id="attendeeScannedToken" type="text" placeholder="Scanned Token (e.g. GEO:evt_...)" class="w-full bg-slate-100/80 border border-slate-300/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 font-mono focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white transition-all">
-                </div>
-                <button id="btnQuickFillToken" type="button" title="Auto-fill active token" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold rounded-xl border border-slate-300 transition-colors whitespace-nowrap cursor-pointer">
-                  ⚡ Fill Active
-                </button>
-                <label class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold rounded-xl border border-slate-300 transition-colors cursor-pointer whitespace-nowrap">
-                  📁 Upload
-                  <input id="qrFileInput" type="file" accept="image/*" class="hidden">
-                </label>
-              </div>
-            </div>
-
-            <!-- Submit Check-in Button -->
-            <div class="pt-2">
-              <button id="btnSubmitCheckin" type="button" class="btn-sunset w-full py-3.5 text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                Verify Location & Check In
-              </button>
-            </div>
-          </div>
-
-          <!-- Result Card (shown after checkin) -->
-          <div id="checkinResultCard" class="hidden pt-2">
-            <div class="ticket-card p-6 shadow-xl rounded-2xl bg-slate-950 text-white">
-              <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-                <div>
-                  <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Official Attendance Receipt</span>
-                  <h3 id="passEventTitle" class="text-base font-extrabold text-white">Event Title</h3>
-                </div>
-                <span id="passStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                  VERIFIED
-                </span>
-              </div>
-
-              <div id="passSuccessBox" class="py-4 space-y-3">
-                <div class="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span class="text-slate-400">Attendee:</span>
-                    <div id="passAttendeeName" class="font-bold text-white text-sm">Rohan Sharma</div>
-                  </div>
-                  <div>
-                    <span class="text-slate-400">Registration ID:</span>
-                    <div id="passStudentId" class="font-mono font-bold text-blue-400 text-sm">RA2111003010123</div>
-                  </div>
-                  <div>
-                    <span class="text-slate-400">Venue:</span>
-                    <div id="passVenue" class="font-medium text-slate-200">TP Ganesan Auditorium</div>
-                  </div>
-                  <div>
-                    <span class="text-slate-400">Timestamp:</span>
-                    <div id="passTimestamp" class="font-mono text-slate-300">Just now</div>
-                  </div>
-                  <div>
-                    <span class="text-slate-400">Haversine Distance:</span>
-                    <div id="passDistance" class="font-mono font-bold text-emerald-400">14.2m (Limit: 80m)</div>
-                  </div>
-                  <div>
-                    <span class="text-slate-400">Security Hash:</span>
-                    <div id="passVerificationHash" class="font-mono text-slate-400">A8F932BC10</div>
-                  </div>
-                </div>
-              </div>
-
-              <div id="passFailureBox" class="py-4 space-y-3 hidden">
-                <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-center space-y-1">
-                  <div id="failReasonTitle" class="text-sm font-bold text-rose-400">Geofence Violation</div>
-                  <p id="failReasonDesc" class="text-xs text-slate-300">You are outside the permitted venue radius.</p>
-                  <div id="failDistanceMetrics" class="text-xs font-mono text-rose-300 mt-2"></div>
-                </div>
-              </div>
-
-              <div class="ticket-notch-line my-3"></div>
-
-              <div class="space-y-3 pt-1">
-                <div id="passMessage" class="text-xs text-emerald-400 text-center font-medium">Verified inside venue</div>
-                <button id="btnScanAnother" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors cursor-pointer">
-                  Scan Another Event or Refresh
-                </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- RIGHT BENTO CARD (Col span 5): Google Entry Pass & Personal QR Code -->
-      <div id="googlePassCard" class="lg:col-span-5 bento-card p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden bg-white">
-        <div class="space-y-4 relative z-10">
-          <!-- Card Top Bar -->
-          <div class="flex items-center justify-between">
-            <div class="visor-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-slate-800">
-              <span>✦ Google Entry Pass</span>
-            </div>
-            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pass Vault</span>
-          </div>
-
-          <!-- Authorized State: Personalized Entry Pass & QR Code -->
-          <div id="googlePassAuthorized" class="hidden space-y-4">
-            <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm">
-                  ✓
-                </div>
-                <div>
-                  <span class="text-xs font-bold text-emerald-950 block">Whitelist Verified</span>
-                  <span id="passUserEmailDisplay" class="font-mono text-emerald-800 text-[11px] font-semibold"></span>
-                </div>
-              </div>
-              <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-sm flex items-center gap-1">
-                <span>📷 Scan Event QR to Enter</span>
-              </span>
-            </div>
-
-            <!-- Personal Entry QR Code & Pass Details -->
-            <div class="flex flex-col items-center justify-center p-5 bg-slate-50 rounded-2xl border border-slate-200/90 text-center">
-              <div class="p-3 bg-white rounded-2xl shadow-md border-2 border-slate-200 inline-block mb-3">
-                <canvas id="personalPassQrCanvas" class="w-40 h-40"></canvas>
-              </div>
-              <div class="space-y-1.5 w-full text-left">
-                <div class="grid grid-cols-2 gap-2">
-                  <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Attendee</span>
-                    <span id="passUserName" class="font-bold text-slate-950 text-xs truncate block"></span>
-                  </div>
-                  <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Venue</span>
-                    <span id="passVenueName" class="font-bold text-slate-950 text-xs truncate block"></span>
-                  </div>
-                </div>
-                <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-                  <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Personal Entry Code</span>
-                  <span id="passEntryTokenText" class="font-mono text-slate-900 text-[11px] font-semibold select-all break-all"></span>
-                </div>
-              </div>
-            </div>
-            <p class="text-[11px] text-slate-500 text-center font-medium">
-              Authenticated with Google. Scan the live event rotating QR code below with your camera to verify your location and complete attendance check-in.
-            </p>
-          </div>
-
-          <!-- Denied State: Google User NOT on Whitelist -->
-          <div id="googlePassDenied" class="hidden space-y-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-center sm:text-left">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center text-xl font-bold">
-                🔒
-              </div>
-              <div>
-                <h4 class="text-xs font-bold text-rose-950">Access Denied for this Event</h4>
-                <span class="px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 text-[10px] font-bold">NOT ON WHITELIST</span>
-              </div>
-            </div>
-            <p class="text-xs text-rose-900 leading-relaxed">
-              Your Google account (<span id="deniedUserEmailDisplay" class="font-mono text-rose-950 font-bold"></span>) is not authorized by the organizer for <strong id="deniedEventTitle"></strong>.
-            </p>
-            <button id="btnSwitchAccountFromDenied" type="button" class="w-full py-2 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold rounded-xl border border-rose-300 transition-colors cursor-pointer">
-              🔄 Switch Google Account
-            </button>
-          </div>
-
-          <!-- Prompt State: Unauthenticated / Sign-in required -->
-          <div id="googlePassUnauthenticated" class="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-slate-950 text-white flex items-center justify-center text-lg">
-                🔑
-              </div>
-              <div>
-                <h4 class="text-xs font-bold text-slate-950 uppercase tracking-wider">Google Sign-In Required</h4>
-                <p class="text-xs text-slate-500 font-medium">Authenticate with your whitelisted Gmail to unlock your personal entry pass.</p>
-              </div>
-            </div>
-            <button id="btnPromptGoogleSignIn" type="button" class="w-full py-3 rounded-full bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer">
-              <svg class="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <span>Sign in with Google</span>
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- MIDDLE BENTO ROW: Camera Scanner (6 cols) & GPS Telemetry (6 cols) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-      <!-- Live Camera Scanner (Col span 6) -->
-      <div class="lg:col-span-6 bento-card p-7 flex flex-col justify-between">
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Live Camera Scanner</span>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">jsQR Engine</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="btnStartCamera" type="button" class="text-xs text-slate-900 hover:text-slate-700 font-bold underline cursor-pointer">Open Camera</button>
-              <button id="btnStopCamera" type="button" class="text-xs text-rose-600 hover:text-rose-500 font-bold underline hidden cursor-pointer">Stop Camera</button>
-              <button id="btnFlipCamera" type="button" class="text-xs text-slate-500 hover:text-slate-900 font-medium cursor-pointer" title="Switch front/rear camera">Flip</button>
-            </div>
-          </div>
-
-          <!-- Camera Viewfinder Box -->
-          <div id="scannerDropZone" class="relative w-full h-52 bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center transition-colors cursor-pointer shadow-inner" title="Click or Drag & Drop image here">
-            <video id="scannerVideo" class="w-full h-full object-cover" playsinline></video>
-            <img id="uploadedImagePreview" class="w-full h-full object-contain hidden z-10 bg-slate-950 p-2" alt="Uploaded QR preview" />
-            
-            <!-- Viewfinder Overlays -->
-            <div class="absolute inset-8 pointer-events-none">
-              <div class="viewfinder-corner corner-tl"></div>
-              <div class="viewfinder-corner corner-tr"></div>
-              <div class="viewfinder-corner corner-bl"></div>
-              <div class="viewfinder-corner corner-br"></div>
-              <div id="scannerLaser" class="scanner-laser hidden"></div>
-            </div>
-
-            <div id="scannerFallbackNotice" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/90 pointer-events-none">
-              <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <p class="text-xs text-slate-300 font-bold">Click "Open Camera" to scan live rotating QR code</p>
-              <p class="text-[11px] text-slate-500 mt-0.5">Or drag & drop / upload a QR snapshot</p>
-            </div>
+          <div class="hidden sm:block text-amber-500 transform rotate-12 mt-1 mr-4 animate-float">
+            <svg class="w-10 h-10" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+              <path d="M15,20 C40,15 70,30 65,65 C60,85 40,85 30,70 C20,55 35,35 60,40 C75,45 85,60 85,75" />
+              <polyline points="75,75 85,85 92,72" />
+            </svg>
           </div>
         </div>
-        <p class="text-[11px] text-slate-400 mt-3 font-medium">Automatic recognition via native BarcodeDetector with jsQR fallback.</p>
-      </div>
 
-      <!-- Geolocation Verification & Simulator (Col span 6) -->
-      <div class="lg:col-span-6 bento-card p-7 flex flex-col justify-between">
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Device Geolocation</label>
-            <button id="btnGetAttendeeGPS" type="button" class="text-xs text-slate-900 hover:text-slate-700 font-bold flex items-center gap-1 cursor-pointer">
-              <svg class="w-3.5 h-3.5 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              </svg>
-              Acquire GPS
-            </button>
-          </div>
-
-          <!-- Coordinates readout -->
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs font-mono">
-            <div>
-              <span class="text-slate-400">LAT:</span> <span id="gpsLatDisplay" class="text-slate-900 font-bold">12.823250</span>
-              <span class="text-slate-400 ml-2">LNG:</span> <span id="gpsLngDisplay" class="text-slate-900 font-bold">80.044250</span>
-            </div>
-            <div id="gpsStatusText" class="text-xs text-emerald-600 font-bold">Inside Venue Preset Ready</div>
-          </div>
-
-          <!-- Simulator presets -->
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+        <!-- Terminal Main Grid: Left = Camera Scanner (5 cols lg), Right = 3-Pillar Verification & Form (7 cols lg) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- LEFT COLUMN: Live Camera Scanner & QR Capture (lg:col-span-5) -->
+          <div class="lg:col-span-5 space-y-4">
             <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                🧪 Evaluator GPS Simulator
-              </span>
-              <span class="text-[10px] text-slate-400 font-medium">One-click presets</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <span>📷</span>
+                  <span>Live Camera Scanner</span>
+                </span>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">20s Rotating QR</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="btnStartCamera" type="button" class="text-xs text-slate-900 dark:text-white hover:underline font-bold cursor-pointer">Open Camera</button>
+                <button id="btnStopCamera" type="button" class="text-xs text-rose-600 dark:text-rose-400 hover:underline font-bold hidden cursor-pointer">Stop</button>
+                <button id="btnFlipCamera" type="button" class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium cursor-pointer" title="Switch front/rear camera">Flip</button>
+              </div>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-semibold">
-              <button type="button" class="gps-preset-btn px-2.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 border border-slate-200 hover:border-emerald-300 transition-colors text-center cursor-pointer shadow-sm" data-preset="inside">
-                ✓ Inside (~14m)
+
+            <!-- Viewfinder Box -->
+            <div id="scannerDropZone" class="relative w-full h-56 sm:h-64 bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center transition-all cursor-pointer shadow-inner group" title="Click to upload or Drag & Drop image here">
+              <video id="scannerVideo" class="w-full h-full object-cover" playsinline></video>
+              <img id="uploadedImagePreview" class="w-full h-full object-contain hidden z-10 bg-slate-950 p-2" alt="Uploaded QR preview" />
+
+              <!-- Viewfinder Overlays -->
+              <div class="absolute inset-8 pointer-events-none">
+                <div class="viewfinder-corner corner-tl"></div>
+                <div class="viewfinder-corner corner-tr"></div>
+                <div class="viewfinder-corner corner-bl"></div>
+                <div class="viewfinder-corner corner-br"></div>
+                <div id="scannerLaser" class="scanner-laser hidden"></div>
+              </div>
+
+              <!-- Fallback / Upload Notice -->
+              <div id="scannerFallbackNotice" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/90 pointer-events-none">
+                <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-2.5 shadow-sm">
+                  <svg class="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <p class="text-xs text-slate-200 font-bold">Click "Open Camera" to scan live QR</p>
+                <p class="text-[11px] text-slate-400 mt-1">Or click anywhere to upload a QR snapshot</p>
+              </div>
+            </div>
+
+            <!-- Upload / Quick Action Toolbar -->
+            <div class="flex items-center gap-2">
+              <label class="flex-1 py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs">
+                <span>📁</span>
+                <span>Upload QR Image</span>
+                <input id="qrFileInput" type="file" accept="image/*" class="hidden">
+              </label>
+              <button id="btnQuickFillToken" type="button" title="Auto-fill active event token for evaluation" class="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1 shadow-xs">
+                <span>⚡</span>
+                <span>Fill Active QR</span>
               </button>
-              <button type="button" class="gps-preset-btn px-2.5 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-slate-200 hover:border-blue-300 transition-colors text-center cursor-pointer shadow-sm" data-preset="edge">
-                Boundary (~65m)
-              </button>
-              <button type="button" class="gps-preset-btn px-2.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-slate-200 hover:border-rose-300 transition-colors text-center cursor-pointer shadow-sm" data-preset="outside">
-                Canteen (~380m)
-              </button>
-              <button type="button" class="gps-preset-btn px-2.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-slate-200 hover:border-rose-300 transition-colors text-center cursor-pointer shadow-sm" data-preset="remote">
-                Off-Campus (~4.5km)
-              </button>
+            </div>
+
+            <!-- Scanned Token Input & Dynamic Status Badge -->
+            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Scanned QR Token</span>
+                <span id="qrTokenTimeBadge" class="text-[10px] font-mono font-bold text-slate-500">20s Rotating</span>
+              </div>
+              <input id="attendeeScannedToken" type="text" placeholder="Scanned Dynamic Token (GEO:...)" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-mono placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-white transition-all">
+              <div id="qrDynamicCountdownBar" class="hidden flex items-center justify-between text-[11px] pt-1 font-medium">
+                <span id="qrDynamicCountdownText" class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Active 20s Dynamic QR</span>
+                </span>
+                <span id="qrDynamicCountdownRemaining" class="font-mono text-slate-600 dark:text-slate-300 font-bold"></span>
+              </div>
             </div>
           </div>
+
+          <!-- RIGHT COLUMN: 3-Pillar Verification & Check-in Form (lg:col-span-7) -->
+          <div class="lg:col-span-7 space-y-5">
+
+            <!-- Checkin Form Section (Inputs + 3 Pillars) -->
+            <div id="checkinFormSection" class="space-y-4">
+              
+              <!-- Attendee Identity Inputs -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="attendeeName" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Full Name *</label>
+                  <input id="attendeeName" type="text" placeholder="e.g. Rohan Sharma" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-white font-medium transition-all">
+                </div>
+                <div>
+                  <label for="attendeeStudentId" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Registration ID *</label>
+                  <input id="attendeeStudentId" type="text" placeholder="e.g. RA2111003010123" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 font-mono focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-white transition-all">
+                </div>
+              </div>
+
+              <!-- THE 3 VERIFICATION PILLARS CHECKLIST -->
+              <div class="space-y-2.5 pt-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Verification Requirements (Must Pass All 3)
+                  </span>
+                  <span class="text-[10px] text-slate-400 font-medium">Automatic Real-Time Validation</span>
+                </div>
+
+                <!-- PILLAR 1: Google Account Authentication -->
+                <div id="pillarGoogleCard" class="p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700">
+                  <div class="flex items-center gap-3">
+                    <div id="pillarGoogleIcon" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                      1
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-900 dark:text-white">Pillar 1: Google Account</span>
+                        <span id="pillarGoogleBadge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Sign-in Required</span>
+                      </div>
+                      <p id="pillarGoogleDetails" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Authenticate with your Google account to verify attendee identity.
+                      </p>
+                      <input id="attendeeEmail" type="hidden">
+                    </div>
+                  </div>
+                  <button id="btnPromptGoogleSignIn" type="button" class="py-1.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-950 text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Sign in with Google</span>
+                  </button>
+                </div>
+
+                <!-- PILLAR 2: Geofence Location -->
+                <div id="pillarLocationCard" class="p-3.5 rounded-2xl border transition-all space-y-2.5 bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center gap-3">
+                      <div id="pillarLocationIcon" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        2
+                      </div>
+                      <div>
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-xs font-bold text-slate-900 dark:text-white">Pillar 2: Geofence Location</span>
+                          <span id="pillarLocationBadge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-200 text-slate-700">Acquiring GPS...</span>
+                        </div>
+                        <p id="pillarLocationDetails" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Verifying device GPS inside venue boundary with Haversine formula.
+                        </p>
+                      </div>
+                    </div>
+                    <button id="btnGetAttendeeGPS" type="button" class="py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs flex items-center gap-1 self-start sm:self-auto">
+                      <span>📍</span>
+                      <span>Acquire GPS</span>
+                    </button>
+                  </div>
+
+                  <!-- Coordinates & Distance Readout -->
+                  <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                    <div class="text-[11px]">
+                      <span class="text-slate-400">LAT:</span> <span id="gpsLatDisplay" class="text-slate-900 dark:text-white font-bold">12.823250</span>
+                      <span class="text-slate-400 ml-2">LNG:</span> <span id="gpsLngDisplay" class="text-slate-900 dark:text-white font-bold">80.044250</span>
+                    </div>
+                    <div id="gpsStatusText" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Inside Venue Preset Ready</div>
+                  </div>
+
+                  <!-- Quick Evaluator GPS Presets -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-[10px]">
+                      <span class="font-bold text-slate-500 uppercase tracking-wider">Evaluator GPS Presets</span>
+                      <span class="text-slate-400">One-click testing</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-semibold">
+                      <button type="button" class="gps-preset-btn px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-slate-200 dark:border-slate-700 transition-colors text-center cursor-pointer text-[11px]" data-preset="inside">
+                        ✓ Inside (~14m)
+                      </button>
+                      <button type="button" class="gps-preset-btn px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-slate-200 dark:border-slate-700 transition-colors text-center cursor-pointer text-[11px]" data-preset="edge">
+                        Boundary (~65m)
+                      </button>
+                      <button type="button" class="gps-preset-btn px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-slate-200 dark:border-slate-700 transition-colors text-center cursor-pointer text-[11px]" data-preset="outside">
+                        Canteen (~380m)
+                      </button>
+                      <button type="button" class="gps-preset-btn px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-slate-200 dark:border-slate-700 transition-colors text-center cursor-pointer text-[11px]" data-preset="remote">
+                        Remote (~4.5km)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- PILLAR 3: 20-Second Dynamic QR Code -->
+                <div id="pillarQrCard" class="p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700">
+                  <div class="flex items-center gap-3">
+                    <div id="pillarQrIcon" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                      3
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-900 dark:text-white">Pillar 3: 20-Second Dynamic QR</span>
+                        <span id="pillarQrBadge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-200 text-slate-700">Awaiting Scan</span>
+                      </div>
+                      <p id="pillarQrDetails" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Scan the rotating dynamic QR code displayed on the organizer terminal.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Submit Check-in Button -->
+              <div class="pt-2">
+                <button id="btnSubmitCheckin" type="button" class="btn-sunset w-full py-4 text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:shadow-xl transition-all">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span>Verify All 3 Pillars & Check In</span>
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Result Card (shown after checkin) -->
+            <div id="checkinResultCard" class="hidden pt-2">
+              <div class="ticket-card p-6 shadow-xl rounded-2xl bg-slate-950 text-white">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div>
+                    <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Official Attendance Receipt</span>
+                    <h3 id="passEventTitle" class="text-base font-extrabold text-white">Event Title</h3>
+                  </div>
+                  <span id="passStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    VERIFIED
+                  </span>
+                </div>
+
+                <div id="passSuccessBox" class="py-4 space-y-3">
+                  <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span class="text-slate-400">Attendee:</span>
+                      <div id="passAttendeeName" class="font-bold text-white text-sm">Rohan Sharma</div>
+                    </div>
+                    <div>
+                      <span class="text-slate-400">Registration ID:</span>
+                      <div id="passStudentId" class="font-mono font-bold text-blue-400 text-sm">RA2111003010123</div>
+                    </div>
+                    <div>
+                      <span class="text-slate-400">Venue:</span>
+                      <div id="passVenue" class="font-medium text-slate-200">TP Ganesan Auditorium</div>
+                    </div>
+                    <div>
+                      <span class="text-slate-400">Timestamp:</span>
+                      <div id="passTimestamp" class="font-mono text-slate-300">Just now</div>
+                    </div>
+                    <div>
+                      <span class="text-slate-400">Haversine Distance:</span>
+                      <div id="passDistance" class="font-mono font-bold text-emerald-400">14.2m (Limit: 80m)</div>
+                    </div>
+                    <div>
+                      <span class="text-slate-400">Security Hash:</span>
+                      <div id="passVerificationHash" class="font-mono text-slate-400">A8F932BC10</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="passFailureBox" class="py-4 space-y-3 hidden">
+                  <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-center space-y-1">
+                    <div id="failReasonTitle" class="text-sm font-bold text-rose-400">Geofence Violation</div>
+                    <p id="failReasonDesc" class="text-xs text-slate-300">You are outside the permitted venue radius.</p>
+                    <div id="failDistanceMetrics" class="text-xs font-mono text-rose-300 mt-2"></div>
+                  </div>
+                </div>
+
+                <div class="ticket-notch-line my-3"></div>
+
+                <div class="space-y-3 pt-1">
+                  <div id="passMessage" class="text-xs text-emerald-400 text-center font-medium">Verified inside venue</div>
+                  <button id="btnScanAnother" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors cursor-pointer">
+                    Scan Another Event or Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
-        <p class="text-[11px] text-slate-400 mt-3 font-medium">Haversine formula validates distance against event geofence perimeter.</p>
+
       </div>
     </div>
 

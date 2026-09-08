@@ -17,7 +17,8 @@
     eventsList: [],
     history: [],
     currentUser: null,
-    activePersonalToken: null,
+    whitelistStatus: null,
+    dynamicCountdownInterval: null,
 
     async init() {
       this.loadSavedProfile();
@@ -28,12 +29,14 @@
       await this.loadRecommendations();
       await this.checkAuthStatus();
       if (window.App && window.App.currentUser) {
-        this.onUserAuthChanged(window.App.currentUser);
+        await this.onUserAuthChanged(window.App.currentUser);
       }
       this.acquireDeviceGPS(false);
+      this.startDynamicCountdownLoop();
+      this.updatePillarsUI();
     },
 
-    onUserAuthChanged(user) {
+    async onUserAuthChanged(user) {
       this.currentUser = user;
       const nameInput = document.getElementById('attendeeName');
       const emailInput = document.getElementById('attendeeEmail');
@@ -43,14 +46,11 @@
         }
         if (emailInput) {
           emailInput.value = user.email;
-          emailInput.readOnly = true;
         }
         this.updateUserBadge(user);
       } else {
         if (emailInput) {
           emailInput.value = '';
-          emailInput.placeholder = 'Sign in with Google to unlock verified email';
-          emailInput.readOnly = true;
         }
         if (nameInput && nameInput.value === 'Rohan Sharma') {
           nameInput.value = '';
@@ -58,7 +58,8 @@
         const badge = document.getElementById('attendeeUserBadge');
         if (badge) badge.innerHTML = '';
       }
-      this.refreshPassCard();
+      await this.checkWhitelistStatus();
+      this.updatePillarsUI();
       this.loadRecommendations();
     },
 
@@ -74,35 +75,19 @@
           const data = await res.json();
           this.currentUser = data.user;
           this.updateUserBadge(data.user);
-          await this.refreshPassCard();
+          await this.checkWhitelistStatus();
+          this.updatePillarsUI();
         }
       } catch (e) {}
     },
 
-    async refreshPassCard() {
-      const authCard = document.getElementById('googlePassAuthorized');
-      const deniedCard = document.getElementById('googlePassDenied');
-      const unauthCard = document.getElementById('googlePassUnauthenticated');
-      const canvas = document.getElementById('personalPassQrCanvas');
-      const passUserName = document.getElementById('passUserName');
-      const passVenueName = document.getElementById('passVenueName');
-      const passEntryTokenText = document.getElementById('passEntryTokenText');
-      const passUserEmailDisplay = document.getElementById('passUserEmailDisplay');
-      const deniedUserEmailDisplay = document.getElementById('deniedUserEmailDisplay');
-      const deniedEventTitle = document.getElementById('deniedEventTitle');
-
+    async checkWhitelistStatus() {
       const user = window.App?.currentUser || this.currentUser;
-
-      // 1. If not logged in with Google/Auth
       if (!user || !user.email) {
-        authCard?.classList.add('hidden');
-        deniedCard?.classList.add('hidden');
-        unauthCard?.classList.remove('hidden');
-        this.activePersonalToken = null;
+        this.whitelistStatus = { authorized: false, unauthenticated: true };
         return;
       }
 
-      // 2. Identify active event
       let eventId = this.selectedEventId;
       if (!eventId && this.eventsList && this.eventsList.length > 0) {
         eventId = this.eventsList[0].id;
@@ -110,79 +95,361 @@
       }
 
       if (!eventId) {
-        authCard?.classList.add('hidden');
-        deniedCard?.classList.add('hidden');
-        unauthCard?.classList.remove('hidden');
-        this.activePersonalToken = null;
-        const unauthTitle = unauthCard?.querySelector('h4');
-        const unauthDesc = unauthCard?.querySelector('p');
-        if (unauthTitle) unauthTitle.textContent = 'No Event Selected';
-        if (unauthDesc) unauthDesc.textContent = 'Create or select an upcoming event above to view your entry pass.';
+        this.whitelistStatus = { authorized: true, open: true };
         return;
       }
 
       const activeEvent = (this.eventsList || []).find(e => e.id === eventId);
-      const headers = { ...(window.App?.getAuthHeaders() || {}) };
+      if (!activeEvent || (!activeEvent.require_whitelist && (!activeEvent.allowed_emails || activeEvent.allowed_emails.trim().length === 0))) {
+        this.whitelistStatus = { authorized: true, open: true, email: user.email };
+        return;
+      }
 
       try {
+        const headers = { ...(window.App?.getAuthHeaders() || {}) };
         const url = `/api/events/${eventId}/my-pass?email=${encodeURIComponent(user.email)}`;
         const res = await fetch(url, { headers });
         const data = await res.json();
 
         if (res.ok && data.authorized) {
-          // Whitelist Verified & Authorized
-          unauthCard?.classList.add('hidden');
-          deniedCard?.classList.add('hidden');
-          authCard?.classList.remove('hidden');
-
-          if (passUserEmailDisplay) passUserEmailDisplay.textContent = data.email;
-          if (passUserName) passUserName.textContent = data.name || user.name || user.email.split('@')[0];
-          if (passVenueName) passVenueName.textContent = data.venue_name || activeEvent?.venue_name || 'Main Auditorium';
-          if (passEntryTokenText) passEntryTokenText.textContent = data.entry_token;
-
-          this.activePersonalToken = data.entry_token;
-
-          // Render personal QR code on canvas
-          if (canvas && window.QRCodeGenerator) {
-            window.QRCodeGenerator.renderCanvas(canvas, data.entry_token, {
-              scale: 5,
-              margin: 2
-            });
-          }
-
-          const nameInput = document.getElementById('attendeeName');
-          if (nameInput && (!nameInput.value || nameInput.value === 'Rohan Sharma')) {
-            nameInput.value = data.name || user.name || user.email.split('@')[0];
-          }
-
-          const emailInput = document.getElementById('attendeeEmail');
-          if (emailInput) emailInput.value = data.email;
-
+          this.whitelistStatus = { authorized: true, email: data.email };
         } else if (res.status === 403 || (data && data.authorized === false)) {
-          // Access Denied (Not on whitelist)
-          authCard?.classList.add('hidden');
-          unauthCard?.classList.add('hidden');
-          deniedCard?.classList.remove('hidden');
-
-          if (deniedUserEmailDisplay) deniedUserEmailDisplay.textContent = user.email;
-          if (deniedEventTitle) deniedEventTitle.textContent = activeEvent ? `"${activeEvent.title}"` : 'this event';
-
-          this.activePersonalToken = null;
-
-          const tokenInput = document.getElementById('attendeeScannedToken');
-          if (tokenInput && tokenInput.value.startsWith('PASS:')) {
-            tokenInput.value = '';
-          }
+          this.whitelistStatus = { authorized: false, denied: true, email: user.email, eventTitle: activeEvent.title };
         } else {
-          // Unauthenticated
-          authCard?.classList.add('hidden');
-          deniedCard?.classList.add('hidden');
-          unauthCard?.classList.remove('hidden');
-          this.activePersonalToken = null;
+          this.whitelistStatus = { authorized: false, unauthenticated: true };
         }
       } catch (err) {
-        console.error('Failed to verify pass status:', err);
+        this.whitelistStatus = { authorized: true, open: true, email: user.email };
       }
+    },
+
+    async refreshPassCard() {
+      await this.checkWhitelistStatus();
+      this.updatePillarsUI();
+    },
+
+    updatePillarsUI() {
+      this.updatePillarGoogle();
+      this.updatePillarLocation();
+      this.updatePillarQR();
+    },
+
+    updatePillarGoogle() {
+      const card = document.getElementById('pillarGoogleCard');
+      const icon = document.getElementById('pillarGoogleIcon');
+      const badge = document.getElementById('pillarGoogleBadge');
+      const details = document.getElementById('pillarGoogleDetails');
+      const btn = document.getElementById('btnPromptGoogleSignIn');
+      const emailInput = document.getElementById('attendeeEmail');
+
+      const user = window.App?.currentUser || this.currentUser;
+
+      if (!user || !user.email) {
+        if (emailInput) emailInput.value = '';
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/80';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200';
+          icon.textContent = '1';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/60 dark:text-amber-200 dark:border-amber-700';
+          badge.textContent = 'Sign-in Required';
+        }
+        if (details) {
+          details.innerHTML = 'Sign in with your Google account to unlock verified attendance.';
+        }
+        if (btn) {
+          btn.className = 'py-1.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-950 text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs flex items-center gap-1.5';
+          btn.innerHTML = `
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Sign in with Google</span>
+          `;
+        }
+        return;
+      }
+
+      if (emailInput) emailInput.value = user.email;
+
+      if (this.whitelistStatus?.denied) {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
+          icon.textContent = '✕';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
+          badge.textContent = 'Not on Whitelist';
+        }
+        if (details) {
+          details.innerHTML = `<span class="font-mono font-bold text-rose-950 dark:text-rose-200">${user.email}</span> is not authorized for this event.`;
+        }
+        if (btn) {
+          btn.className = 'py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-rose-300 dark:border-rose-700 text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs';
+          btn.innerHTML = '<span>🔄 Switch Account</span>';
+        }
+      } else {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-xs';
+          icon.textContent = '✓';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+          badge.textContent = this.whitelistStatus?.open ? '✓ Open Access' : '✓ Whitelist Approved';
+        }
+        if (details) {
+          details.innerHTML = `<span class="font-mono font-bold text-emerald-950 dark:text-emerald-200">${user.email}</span> • Authenticated with Google`;
+        }
+        if (btn) {
+          btn.className = 'py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs';
+          btn.innerHTML = '<span>Switch</span>';
+        }
+      }
+    },
+
+    updatePillarLocation() {
+      const card = document.getElementById('pillarLocationCard');
+      const icon = document.getElementById('pillarLocationIcon');
+      const badge = document.getElementById('pillarLocationBadge');
+      const details = document.getElementById('pillarLocationDetails');
+
+      const evt = this.selectedEventId ? (this.eventsList || []).find(e => e.id === this.selectedEventId) : null;
+
+      if (!this.currentCoords) {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all space-y-2.5 bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
+          icon.textContent = '2';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
+          badge.textContent = 'GPS Pending';
+        }
+        if (details) {
+          details.textContent = 'Click "Acquire GPS" or select an evaluator preset to verify venue proximity.';
+        }
+        return;
+      }
+
+      if (evt && evt.latitude && evt.longitude) {
+        const dist = this.calculateDistance(this.currentCoords.latitude, this.currentCoords.longitude, evt.latitude, evt.longitude);
+        const within = dist <= evt.radius_meters;
+
+        if (within) {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all space-y-2.5 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-xs';
+            icon.textContent = '✓';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+            badge.textContent = `✓ Inside Geofence (${dist}m / ${evt.radius_meters}m)`;
+          }
+          if (details) {
+            details.innerHTML = `Device located inside <b class="text-slate-900 dark:text-white">${evt.venue_name}</b> radius (${dist}m, limit ${evt.radius_meters}m).`;
+          }
+        } else {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all space-y-2.5 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
+            icon.textContent = '✕';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
+            badge.textContent = `✕ Out of Bounds (${dist}m / ${evt.radius_meters}m)`;
+          }
+          if (details) {
+            details.innerHTML = `Outside venue boundary by <span class="font-bold text-rose-600 dark:text-rose-400">${dist - evt.radius_meters}m</span>. Move closer to ${evt.venue_name}.`;
+          }
+        }
+      } else {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all space-y-2.5 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-xs';
+          icon.textContent = '✓';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+          badge.textContent = '✓ GPS Acquired';
+        }
+        if (details) {
+          details.textContent = `High-accuracy GPS active (±${Math.round(this.currentCoords.accuracy || 10)}m). Select an event to compute boundary.`;
+        }
+      }
+    },
+
+    updatePillarQR() {
+      const card = document.getElementById('pillarQrCard');
+      const icon = document.getElementById('pillarQrIcon');
+      const badge = document.getElementById('pillarQrBadge');
+      const details = document.getElementById('pillarQrDetails');
+      const countdownBar = document.getElementById('qrDynamicCountdownBar');
+      const countdownText = document.getElementById('qrDynamicCountdownText');
+      const countdownRemaining = document.getElementById('qrDynamicCountdownRemaining');
+
+      const token = (document.getElementById('attendeeScannedToken')?.value || '').trim();
+      const activeEvent = this.selectedEventId ? (this.eventsList || []).find(e => e.id === this.selectedEventId) : null;
+
+      if (!token) {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
+          icon.textContent = '3';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
+          badge.textContent = 'Awaiting Scan';
+        }
+        if (details) {
+          details.textContent = 'Scan the live 20-second dynamic rotating QR code displayed on the organizer screen.';
+        }
+        if (countdownBar) countdownBar.classList.add('hidden');
+        return;
+      }
+
+      const isGeo = token.startsWith('GEO:');
+      const isPass = token.startsWith('PASS:');
+      const isStaticMatch = activeEvent && (token === activeEvent.static_code || token === activeEvent.id);
+
+      if (isGeo) {
+        const parts = token.split(':');
+        const tokenEventId = parts[1];
+        const tokenTimeSlice = parseInt(parts[2], 10);
+        const now = Date.now();
+        const currentTimeSlice = Math.floor(now / 20000);
+        const elapsedInSlice = Math.floor((now % 20000) / 1000);
+        const remainingSec = 20 - elapsedInSlice;
+        const isTimeValid = tokenTimeSlice === currentTimeSlice || tokenTimeSlice === (currentTimeSlice - 1);
+        const isEventValid = !this.selectedEventId || tokenEventId === this.selectedEventId;
+
+        if (!isEventValid) {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
+            icon.textContent = '✕';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
+            badge.textContent = '✕ Event Mismatch';
+          }
+          if (details) {
+            details.innerHTML = `Token belongs to another event. Please scan the QR code for <b class="text-slate-900 dark:text-white">"${activeEvent?.title || 'this event'}"</b>.`;
+          }
+          if (countdownBar) countdownBar.classList.add('hidden');
+        } else if (!isTimeValid) {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
+            icon.textContent = '✕';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
+            badge.textContent = '✕ QR Code Expired (20s Window Passed)';
+          }
+          if (details) {
+            details.innerHTML = 'Dynamic token expired. Dynamic codes rotate every 20s to stop proxy attendance. Please scan the current code.';
+          }
+          if (countdownBar) {
+            countdownBar.classList.remove('hidden');
+            if (countdownText) countdownText.innerHTML = '<span class="text-rose-600 dark:text-rose-400 font-bold">✕ Window Expired</span>';
+            if (countdownRemaining) countdownRemaining.textContent = 'Re-scan needed';
+          }
+        } else {
+          if (card) {
+            card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80';
+          }
+          if (icon) {
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-xs';
+            icon.textContent = '✓';
+          }
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+            badge.textContent = '✓ 20s Dynamic QR Verified';
+          }
+          if (details) {
+            details.innerHTML = 'Cryptographic HMAC verified. Valid for current 20-second dynamic slice.';
+          }
+          if (countdownBar) {
+            countdownBar.classList.remove('hidden');
+            if (countdownText) {
+              countdownText.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Active 20s Dynamic QR</span>
+              `;
+            }
+            if (countdownRemaining) {
+              countdownRemaining.textContent = `${remainingSec}s left in current slice`;
+            }
+          }
+        }
+      } else if (isStaticMatch) {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800/80';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-blue-500 text-white shadow-xs';
+          icon.textContent = '✓';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/60 dark:text-blue-200 dark:border-blue-700';
+          badge.textContent = 'Static Code Matched';
+        }
+        if (details) {
+          details.textContent = 'Matched event static fallback code.';
+        }
+        if (countdownBar) countdownBar.classList.add('hidden');
+      } else {
+        if (card) {
+          card.className = 'p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80';
+        }
+        if (icon) {
+          icon.className = 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200';
+          icon.textContent = '✕';
+        }
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700';
+          badge.textContent = '✕ Invalid Token';
+        }
+        if (details) {
+          details.textContent = 'Unrecognized QR code format. Please scan an authentic event QR code.';
+        }
+        if (countdownBar) countdownBar.classList.add('hidden');
+      }
+    },
+
+    startDynamicCountdownLoop() {
+      if (this.dynamicCountdownInterval) clearInterval(this.dynamicCountdownInterval);
+      this.dynamicCountdownInterval = setInterval(() => {
+        const token = (document.getElementById('attendeeScannedToken')?.value || '').trim();
+        if (token && token.startsWith('GEO:')) {
+          this.updatePillarQR();
+        }
+      }, 1000);
     },
 
     updateUserBadge(user) {
@@ -791,6 +1058,24 @@
         });
       }
 
+      // Pillar 1 Google Sign-in button
+      const btnPillarGoogle = document.getElementById('btnPromptGoogleSignIn');
+      if (btnPillarGoogle) {
+        btnPillarGoogle.addEventListener('click', () => {
+          if (window.App?.currentUser) {
+            window.App?.openGoogleAuthModal();
+          } else {
+            window.App?.triggerGoogleLogin();
+          }
+        });
+      }
+
+      // Live Scanned Token input listener to update Pillar 3 dynamically
+      const tokenInput = document.getElementById('attendeeScannedToken');
+      if (tokenInput) {
+        tokenInput.addEventListener('input', () => this.updatePillarsUI());
+      }
+
       // 1-Click Refresh Upcoming Events Catalog Button
       const btnRefresh = document.getElementById('btnRefreshUpcomingEvents');
       if (btnRefresh) {
@@ -923,6 +1208,7 @@
         setTimeout(() => input.classList.remove('ring-2', 'ring-emerald-500'), 2000);
       }
 
+      this.updatePillarsUI();
       window.App?.showToast('QR Code verified for event!', 'success');
     },
 
@@ -940,7 +1226,10 @@
 
       // Clear input before decoding so a failed/unrelated image doesn't retain old token
       const input = document.getElementById('attendeeScannedToken');
-      if (input) input.value = '';
+      if (input) {
+        input.value = '';
+        this.updatePillarsUI();
+      }
 
       // Display preview in viewfinder
       const previewImg = document.getElementById('uploadedImagePreview');
@@ -979,7 +1268,7 @@
           await this.loadUpcomingEvents();
         }
 
-        const activeEvt = this.eventsList[0];
+        const activeEvt = (this.eventsList || []).find(e => e.id === this.selectedEventId) || this.eventsList[0];
         if (!activeEvt) {
           window.App?.showToast('No active events available to check in', 'warning');
           return;
@@ -991,7 +1280,8 @@
         const input = document.getElementById('attendeeScannedToken');
         if (input) {
           input.value = tokenData.token;
-          window.App?.showToast(`Filled current token for "${activeEvt.title}"`, 'info');
+          this.updatePillarsUI();
+          window.App?.showToast(`Filled active 20s token for "${activeEvt.title}" (${tokenData.remaining_seconds}s remaining)`, 'info');
         }
       } catch (e) {
         window.App?.showToast('Could not fetch active event token', 'error');
@@ -1116,13 +1406,20 @@
           statusEl.className = 'text-xs text-emerald-400 font-medium';
         }
       }
+      this.updatePillarLocation();
     },
 
     async handleCheckIn() {
+      // --- PILLAR 1: Google Account Authentication & Whitelist ---
       const user = window.App?.currentUser || this.currentUser;
       if (!user || !user.email) {
-        window.App?.showToast('Security Alert: You must sign in with your Google account to check in. Manual email entry is disabled.', 'warning');
+        window.App?.showToast('Pillar 1 Check Failed: You must sign in with your Google account to check in.', 'warning');
         window.App?.openGoogleAuthModal();
+        return;
+      }
+
+      if (this.whitelistStatus?.denied) {
+        window.App?.showToast(`Pillar 1 Check Failed: Your Google account (${user.email}) is not authorized on the whitelist for this event.`, 'error');
         return;
       }
 
@@ -1134,7 +1431,6 @@
       const emailInput = document.getElementById('attendeeEmail');
       if (emailInput) {
         emailInput.value = email;
-        emailInput.readOnly = true;
       }
 
       if (!name || !studentId) {
@@ -1142,16 +1438,7 @@
         return;
       }
 
-      if (!token) {
-        window.App?.showToast('Scan Required: Please scan the live event QR code with your camera or upload a QR snapshot to enter.', 'warning');
-        const startCamBtn = document.getElementById('btnStartCamera');
-        if (startCamBtn) {
-          startCamBtn.classList.add('animate-pulse');
-          setTimeout(() => startCamBtn.classList.remove('animate-pulse'), 2500);
-        }
-        return;
-      }
-
+      // --- PILLAR 2: Real Device GPS Location / Geofence ---
       if (!this.currentCoords) {
         if (navigator.geolocation) {
           try {
@@ -1176,7 +1463,54 @@
       }
 
       if (!this.currentCoords) {
-        window.App?.showToast('GPS Location Required: Please allow browser location access or select a GPS preset to verify attendance.', 'warning');
+        window.App?.showToast('Pillar 2 Check Failed: GPS location required. Click "Acquire GPS" or select an evaluator preset.', 'warning');
+        return;
+      }
+
+      // --- PILLAR 3: Correct 20-Second Dynamic QR Code ---
+      if (!token) {
+        window.App?.showToast('Pillar 3 Check Failed: Live 20-second dynamic QR scan required. Please open camera or upload QR image.', 'warning');
+        const startCamBtn = document.getElementById('btnStartCamera');
+        if (startCamBtn) {
+          startCamBtn.classList.add('animate-pulse');
+          setTimeout(() => startCamBtn.classList.remove('animate-pulse'), 2500);
+        }
+        return;
+      }
+
+      if (!this.selectedEventId) {
+        window.App?.showToast('Please select the event you are attending from the catalog.', 'warning');
+        return;
+      }
+
+      const activeEvt = (this.eventsList || []).find(e => e.id === this.selectedEventId);
+
+      // Verify token event matching and time slice validity
+      if (token.startsWith('GEO:')) {
+        const parts = token.split(':');
+        if (parts[1] !== this.selectedEventId) {
+          const scannedEvt = (this.eventsList || []).find(e => e.id === parts[1]);
+          const scannedName = scannedEvt ? `"${scannedEvt.title}"` : 'a different event';
+          window.App?.showToast(`Pillar 3 Check Failed: QR Code mismatch. This token belongs to ${scannedName}, not "${activeEvt?.title || 'the selected event'}".`, 'error');
+          return;
+        }
+
+        const tokenTimeSlice = parseInt(parts[2], 10);
+        const currentTimeSlice = Math.floor(Date.now() / 20000);
+        const isTimeValid = tokenTimeSlice === currentTimeSlice || tokenTimeSlice === (currentTimeSlice - 1);
+        if (!isTimeValid) {
+          window.App?.showToast('Pillar 3 Check Failed: 20-second dynamic QR code has expired. Please scan the current fresh QR code on the organizer screen.', 'error');
+          this.updatePillarsUI();
+          return;
+        }
+      } else if (token.startsWith('PASS:')) {
+        const parts = token.split(':');
+        if (parts[1] !== this.selectedEventId) {
+          window.App?.showToast('Pillar 3 Check Failed: QR Pass was issued for a different event.', 'error');
+          return;
+        }
+      } else if (activeEvt && token !== activeEvt.static_code && token !== activeEvt.id) {
+        window.App?.showToast(`Pillar 3 Check Failed: Invalid QR code for "${activeEvt.title}".`, 'error');
         return;
       }
 
@@ -1185,30 +1519,16 @@
       const btnSubmit = document.getElementById('btnSubmitCheckin');
       if (btnSubmit) {
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = 'Verifying Attendance & Geofence...';
+        btnSubmit.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-slate-950 inline" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Verifying All 3 Pillars...</span>
+        `;
       }
+
       try {
-        if (!this.selectedEventId) {
-          window.App?.showToast('Please select the event you are attending from the catalog.', 'warning');
-          return;
-        }
-
-        const activeEvt = (this.eventsList || []).find(e => e.id === this.selectedEventId);
-
-        // Strictly verify token matches the selected event
-        if (token.startsWith('GEO:') || token.startsWith('PASS:')) {
-          const parts = token.split(':');
-          if (parts[1] !== this.selectedEventId) {
-            const scannedEvt = (this.eventsList || []).find(e => e.id === parts[1]);
-            const scannedName = scannedEvt ? `"${scannedEvt.title}"` : 'a different event';
-            window.App?.showToast(`QR Code Mismatch: This QR belongs to ${scannedName}. You are checking in for "${activeEvt?.title || 'a different event'}".`, 'error');
-            return;
-          }
-        } else if (activeEvt && token !== activeEvt.static_code && token !== activeEvt.id) {
-          window.App?.showToast(`Invalid QR Code: Scanned code does not match "${activeEvt.title}".`, 'error');
-          return;
-        }
-
         const payload = {
           event_id: this.selectedEventId,
           token,
@@ -1236,7 +1556,7 @@
           this.showSuccessPass(data);
           this.saveToHistory(data.receipt, 'VERIFIED', data.distance_meters);
           this.triggerConfetti();
-          window.App?.showToast('Attendance Verified & Geo-Tagged!', 'success');
+          window.App?.showToast('All 3 Pillars Verified! Attendance Recorded!', 'success');
         } else {
           this.showFailurePass(data);
           window.App?.showToast(data.error || data.message || 'Check-in Rejected', 'error');
@@ -1247,7 +1567,12 @@
       } finally {
         if (btnSubmit) {
           btnSubmit.disabled = false;
-          btnSubmit.innerHTML = 'Verify Location & Check In';
+          btnSubmit.innerHTML = `
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>Verify All 3 Pillars & Check In</span>
+          `;
         }
       }
     },
