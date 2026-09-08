@@ -7,7 +7,7 @@
 [![Architecture: Zero External Dependencies](https://img.shields.io/badge/Dependencies-0%20External%20NPM-purple.svg)](package.json)
 [![Database: SQLite WAL](https://img.shields.io/badge/Database-SQLite%20WAL-blue.svg)](db.js)
 
-> A full-stack, enterprise-grade attendance management system combining **dynamic HMAC-rotating QR codes**, **high-precision Haversine geofencing ($d \le R$)**, **cryptographically enforced Google OAuth 2.0 authentication**, **organizer-restricted Gmail whitelist gatekeeping**, **real-time Server-Sent Events (SSE) telemetry**, **downloadable audit reports**, and a **local Qwen 2.5 3B AI intelligence engine**.
+> A full-stack, enterprise-grade attendance management system combining **unique event-specific & dynamic HMAC QR codes**, **high-precision Haversine geofencing ($d \le R$)**, **cryptographically enforced Google OAuth 2.0 authentication**, **organizer-restricted Gmail whitelist gatekeeping**, **real-time Server-Sent Events (SSE) telemetry**, **quarantined security breach tracking**, and a **local Qwen 2.5 3B AI intelligence engine**.
 >
 > Built with pure native Node.js (`node:http`, `node:crypto`, `node:sqlite`), zero external npm frameworks, and strictly zero Supabase / Firebase dependencies.
 
@@ -15,15 +15,17 @@
 
 ## 📑 Table of Contents
 - [System Architecture](#-system-architecture)
+- [3-Pillar Verification Framework](#-3-pillar-verification-framework)
 - [Features Implemented](#-features-implemented)
 - [Additional Features Added (Bonus ⭐)](#-additional-features-added-bonus-)
+- [Security Breach Tracking & Quarantining](#-security-breach-tracking--quarantining)
 - [Important Implementation Decisions](#-important-implementation-decisions)
 - [Concepts Learned](#-concepts-learned)
 - [API Reference](#-api-reference)
 - [Setup & Running Instructions](#-setup--running-instructions)
 - [Database Configuration & Schema](#-database-configuration--schema)
 - [Deployment Guide](#-deployment-guide)
-- [Automated Testing Suite](#-automated-testing-suite)
+- [Automated Testing Suite (41/41 Passing)](#-automated-testing-suite-4141-passing)
 - [Demo Video Walkthrough](#-demo-video-walkthrough)
 
 ---
@@ -83,16 +85,28 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 
 ---
 
+## 🏛️ 3-Pillar Verification Framework
+
+To eliminate buddy-punching, off-site attendance fraud, and stolen credential abuse, attendance check-in strictly requires concurrent passage of all three pillars:
+
+| Pillar | Verification Vector | Anti-Fraud Mechanism |
+|---|---|---|
+| **Pillar 1: Verified Google Identity** | Authenticated Google OAuth 2.0 account matching organizer's authorized whitelist. | Readonly email field; no manual email spoofing. Rejects unauthorized accounts with `status: 'FLAGGED'`. |
+| **Pillar 2: Geofence Location Boundary** | Real-time device GPS coordinates calculated via backend Haversine formula ($d \le R$). | Device GPS must fall strictly within venue boundary (e.g. 50m–100m). Prevents off-site proxies. |
+| **Pillar 3: Event-Specific QR Matching** | Scanned event QR token matching the specific event (`GEO:<eventId>:<staticCode>`). | Cross-event tokens and invalid codes are strictly rejected. |
+
+---
+
 ## ✨ Features Implemented
 
 ### 1. 📅 Upcoming Campus Events Display with Comprehensive Details
-- **Full Event Information**: Every event displays its **Name**, **Venue**, formatted **Date** (e.g. `Sep 15, 2026`), **Time Range** (e.g. `09:30 AM – 12:30 PM`), **Track/Category badge** (e.g. `💻 Tech / AI`, `⚡ Hackathon`, `🛠️ Workshop`, `🎓 Seminar`), **Geofence Radius** (e.g. `📍 50m radius`), **Dynamic/Static QR type**, and **Whitelist Entry Status** (`🔒 Whitelisted` or `🌐 Open Entry`).
+- **Full Event Information**: Every event displays its **Name**, **Venue**, formatted **Date** (e.g. `Sep 15, 2026`), **Time Range** (e.g. `09:30 AM – 12:30 PM`), **Track/Category badge** (e.g. `💻 Tech / AI`, `⚡ Hackathon`, `🛠️ Workshop`, `🎓 Seminar`), **Geofence Radius** (e.g. `📍 50m radius`), **QR Type**, and **Whitelist Entry Status** (`🔒 Whitelisted` or `🌐 Open Entry`).
 - **Instant Synchronization**: When an organizer creates a new event with schedule and track details, it immediately displays in the Attendee catalog across all clients without a reload.
 
-### 2. 🛡️ Anti-Proxy Dynamic QR Code Engine
-- **Time-Sliced HMAC Generation**: Projects time-based cryptographic tokens (`GEO:eventId:timeSlice:signature`) refreshing every **20 seconds**.
-- **Anti-Screenshot Protection**: If an attendee screenshots the QR and sends it to an absent peer, the token expires before the peer can submit check-in.
-- **Presenter Mode**: Projector-optimized fullscreen display with an animated circular countdown SVG ring and high-contrast SVG rendering.
+### 2. 🛡️ Event-Specific QR Codes & Dynamic Rotating Tokens
+- **Unique Event QR Codes (`GEO:<eventId>:<staticCode>`)**: Each event generates its own distinct static token. Cross-event QR tokens are rejected immediately.
+- **Anti-Proxy via Geofencing**: Because attendance verification requires the user's live physical GPS coordinates to be inside the venue perimeter ($d \le R$), organizers can use high-reliability static event QR codes without fear of off-site proxy sharing, resolving camera focus delays or image upload expiration timeouts.
+- **Dynamic 20-Second Sliding HMAC Support**: Organizers can also toggle 20-second dynamic rotating tokens (`GEO:<eventId>:<timeSlice>:<signature>`) for high-security auditorium projector presentations.
 
 ### 3. 📍 High-Precision Geofencing (Haversine Formula)
 - **Server-Side Distance Authority**: Coordinates are computed strictly on the backend to prevent client tampering.
@@ -104,12 +118,17 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 ### 4. 📷 Multi-Modal QR Scanner
 - **WebRTC Camera Stream**: Scans directly using device webcam/phone camera with animated laser reticle and front/rear camera flip.
 - **Image File Drag-and-Drop**: Upload QR screenshots or images directly with multi-engine decoding (`BarcodeDetector` + native `jsQR` engine fallback).
-- **Anti-Tamper Token Validation**: Automatically decodes and parses event identifiers and cryptographic signatures.
+- **Real-Time 3-Pillar Feedback**: Shows live status indicators for Google Identity, Device Location, and Event QR Code.
 
 ### 5. ⚡ Real-Time Attendance Monitoring via Server-Sent Events (SSE)
 - **Zero-Latency Telemetry**: Organizers receive instant live push updates (`GET /api/events/:id/live-stream`) when attendees check in.
-- **Live Metrics Dashboard**: Real-time verified count, out-of-bounds count, geofence compliance percentage, and average distance from venue.
-- **Interactive Attendee Table**: Search, filter by status (`ALL`, `VERIFIED`, `OUT_OF_BOUNDS`), and view timestamps and GPS distances.
+- **Bento Stat Cards**:
+  - **Total Scans**: All submitted check-in attempts.
+  - **Verified**: Verified attendees inside the geofence with authorized credentials.
+  - **Pass Rate %**: Dynamically calculated as $\frac{\text{Verified}}{\text{Total}} \times 100$.
+  - **Breach**: Combined count of spatial breaches (`OUT_OF_BOUNDS`) and identity/whitelist breaches (`FLAGGED`).
+  - **Avg Distance**: Average attendee distance in meters from the venue center.
+- **Interactive Attendee Table**: Search, filter by status (`ALL`, `VERIFIED`, `BREACHES`), and view timestamps, registration IDs, and GPS distances.
 
 ### 6. 📊 Downloadable Audit Reports
 - **One-Click CSV Export**: Download complete records via `GET /api/events/:id/export/csv` containing `Name, Registration ID, Email, Attendance Status, Timestamp, Distance, Venue`.
@@ -145,7 +164,7 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 - **Organizer Whitelist Enforcement**: Organizers specify allowed attendee Gmails per event. The backend gatekeeper (`GET /api/events/:id/my-pass`) verifies the user's Google JWT:
   - Whitelisted users receive an authorized personal digital pass.
   - Non-whitelisted users are rejected with HTTP 403 `Access Denied`.
-- **Anti-Account Hijacking**: If an attendee scans another student's pass, the system detects the email mismatch and raises a security warning.
+- **Anti-Pass Hijacking**: If an attendee scans another student's pass, the system detects the email mismatch, quarantines the attempt as `status: 'FLAGGED'`, logs a security breach, and alerts the organizer in real time.
 
 ### 6. 🎟️ Personal Digital Attendance Pass (1-Tap Check-In)
 - Whitelisted attendees automatically receive a personalized pass QR code (`PASS:eventId:email:dynamicToken`) rendered on an HTML5 canvas.
@@ -160,6 +179,25 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
 
 ---
 
+## 🚨 Security Breach Tracking & Quarantining
+
+When unauthorized check-in attempts occur, GeoAttend captures and quarantines the security event in real time rather than silently discarding it:
+
+1. **Unauthorized Email Check-in**:
+   - If an attendee signs in with a Google account not listed on the event's authorized whitelist, their attempt is recorded in the `attendees` table with `status: 'FLAGGED'`.
+   - Audit notes document the exact violation: `Access Denied: Your verified Google email (...) is not authorized for this event. Whitelist breach.`
+2. **Pass Hijacking Prevention**:
+   - If an attendee scans a personal pass issued to another student's email, the attempt is quarantined as `status: 'FLAGGED'`.
+3. **Telemetry & Pass Rate Impact**:
+   - The **Breach** metric card on the organizer dashboard counts all violations:
+     $$\text{Breaches} = \text{Out of Bounds} + \text{Flagged}$$
+   - The **Pass Rate** accurately reflects all attempts:
+     $$\text{Pass Rate} = \frac{\text{Verified}}{\text{Total Attempts}} \times 100$$
+   - The organizer's **Attendee Roster** immediately displays the flagged record with a red badge, audit details, and options to manually review or override.
+   - The **3D Geofence Radar** maps the breach with a red marker at the attendee's reported coordinates.
+
+---
+
 ## 📐 Important Implementation Decisions
 
 1. **Zero External Dependencies / Pure Native Node.js**:
@@ -170,19 +208,23 @@ GeoAttend operates on a dual-portal single-page application (SPA) architecture w
    - Replaced third-party BaaS platforms with custom RFC 7519 compliant HMAC-SHA256 JWT tokens and local SQLite database storage.
    - *Rationale*: Guarantees data privacy, eliminates cloud vendor lock-in, and allows offline/local intranet deployment in campus environments.
 
-3. **Server-Side Distance Authority**:
+3. **Event-Specific QR Codes Coupled with Geofencing**:
+   - Replaced strict 20-second dynamic expiration with unique event-specific static QR codes (`GEO:<eventId>:<staticCode>`) combined with spatial GPS coordinates ($d \le R$).
+   - *Rationale*: Eliminates false-negative check-in rejections caused by phone camera focus lag or image upload delays, while preserving uncompromised anti-proxy security (attendees cannot check in from home even if they have a screenshot of the QR).
+
+4. **Server-Side Distance Authority**:
    - Geolocation verification is computed strictly on the backend using the Haversine formula. The client sends raw `(latitude, longitude)` coordinates along with browser accuracy; the server computes distance and assigns `status`.
    - *Rationale*: Prevents client-side script inspection or DOM manipulation from faking a `VERIFIED` status.
 
-4. **Two-Window Sliding HMAC Verification**:
+5. **Two-Window Sliding HMAC Verification**:
    - The token validator accepts dynamic tokens generated for time window $t$ (current 20s slice) and $t-1$ (previous 20s slice).
    - *Rationale*: Accommodates network latency and camera focus delay without falsely rejecting an attendee who scanned right as the counter rolled over, while still strictly rejecting older screenshots.
 
-5. **Server-Sent Events (SSE) over WebSockets**:
+6. **Server-Sent Events (SSE) over WebSockets**:
    - Utilized unidirectional SSE (`text/event-stream`) for real-time organizer telemetry instead of bi-directional WebSockets.
    - *Rationale*: SSE uses standard HTTP, automatically handles reconnections, has lower server memory overhead, works seamlessly across HTTP/2 proxies, and perfectly models the unidirectional nature of check-in events.
 
-6. **SQLite Write-Ahead Logging (WAL) Mode**:
+7. **SQLite Write-Ahead Logging (WAL) Mode**:
    - Initialized database connection with `PRAGMA journal_mode = WAL;`.
    - *Rationale*: Allows concurrent read transactions to execute without blocking write transactions during high-frequency check-in surges.
 
@@ -338,9 +380,9 @@ docker run -p 3000:3000 geoattend
 
 ---
 
-## 🧪 Automated Testing Suite
+## 🧪 Automated Testing Suite (41/41 Passing)
 
-The project includes an end-to-end automated testing suite with **100% test pass rate (35/35 tests passing)**:
+The project includes an end-to-end automated testing suite with **100% test pass rate (41/41 tests passing)**:
 
 ```text
 === STARTING TEST SUITE: Geo-Tagged Attendance System ===
@@ -366,7 +408,7 @@ The project includes an end-to-end automated testing suite with **100% test pass
   ✓ POST /api/auth/google/config updates client_id and login redirects to accounts.google.com
 
 [4/6] Testing Server REST Endpoints & Geofenced Check-in...
-  ✓ GET /api/events returns seeded events
+  ✓ GET /api/events returns event list
   ✓ POST /api/events creates a new event with geofence settings
   ✓ GET /api/events/:id/qr-token returns dynamic rotating token
   ✓ POST /api/check-in VERIFIED when attendee is inside geofence
@@ -387,6 +429,9 @@ The project includes an end-to-end automated testing suite with **100% test pass
   ✓ GET /api/ai/status returns Ollama configuration and status
   ✓ POST /api/ai/config updates local Ollama model configuration
   ✓ POST /api/ai/chat returns intelligent contextual attendance answer
+  ✓ POST /api/ai/search-events searches events semantically
+  ✓ POST /api/ai/recommendations generates personalized recommendations for attendees
+  ✓ POST /api/events creates an event with category and formatted schedule date/time
   ✓ GET /api/events/:id/export/csv exports required columns (Name, Registration ID, Email, Timestamp)
 
 [6/6] Testing Frontend Single Page Application & Static Assets...
@@ -396,7 +441,7 @@ The project includes an end-to-end automated testing suite with **100% test pass
   ✓ GET /js/qr-scanner.js serves robust scanner with dynamic engine fallback
 
 ======================================================
-  TEST RESULTS: 38 PASSED, 0 FAILED
+  TEST RESULTS: 41 PASSED, 0 FAILED
 ======================================================
 ```
 
@@ -404,26 +449,26 @@ The project includes an end-to-end automated testing suite with **100% test pass
 
 ## 📹 Demo Video Walkthrough
 
-A structured 2-minute demonstration walkthrough for evaluators:
+A structured demonstration walkthrough for evaluators:
 
-1. **System Introduction & Google Sign-In (0:00 - 0:30)**:
+1. **System Introduction & Google Sign-In**:
    - Click **"Sign in with Google"** &rarr; redirects to `accounts.google.com`.
    - Sign in with verified Google account (`nandhakishore.hi@gmail.com`).
-   - Observe the locked `readonly` email field with verified badge.
-2. **Organizer Control & Dynamic QR Projection (0:30 - 1:00)**:
+   - Observe the locked `readonly` email field with verified identity badge.
+2. **Organizer Control & Event QR Projection**:
    - Open **Organizer Portal**.
-   - Show dynamic 20-second countdown ring with rotating HMAC QR code.
+   - Show event-specific QR code projection with venue geofence perimeter.
    - Click **Presenter Mode** to show full-screen projector view.
-   - Demonstrate the **Whitelist Manager** modal adding attendee Gmails.
-3. **Attendee Verification (In-Bounds vs Out-of-Bounds) (1:00 - 1:30)**:
+   - Demonstrate the **Whitelist Manager** modal adding authorized attendee Gmails.
+3. **3-Pillar Attendee Verification (Verified vs Breach)**:
    - Switch to **Attendee Portal**.
-   - Select event and apply preset **"Inside Venue (~14m)"** &rarr; Submit check-in.
-   - Celebrate confetti, green `VERIFIED` status, and cryptographic ticket receipt.
-   - Change GPS preset to **"Outside (~380m)"** &rarr; Submit check-in.
-   - Show amber `OUT_OF_BOUNDS` alert with exact breach distance in meters.
-4. **Real-time SSE Telemetry & CSV Export (1:30 - 2:00)**:
-   - Switch back to Organizer Portal: observe live counter immediately increment via SSE.
-   - Review AI Attendance Forecast and punctuality scores.
+   - Scan event QR code with live camera or upload QR image &rarr; Pillars turn green.
+   - Submit check-in inside venue boundary &rarr; celebrate confetti, green `VERIFIED` pass, and cryptographic receipt.
+   - Attempt check-in with an unauthorized Google email &rarr; show immediate `FLAGGED` security breach quarantine card.
+4. **Real-time SSE Telemetry, Breach Counting & CSV Export**:
+   - Switch back to Organizer Portal: observe live **Breach** counter incrementing and **Pass Rate** adjusting.
+   - Review AI Attendance Forecast and anomaly alerts.
+   - Filter table by **Breaches** to view quarantined attempts.
    - Click **Export CSV Report** to download the complete audit trail.
 
 ---
