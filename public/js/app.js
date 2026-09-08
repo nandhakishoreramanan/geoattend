@@ -775,11 +775,13 @@
             const res = await fetch('/api/ai/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ question: q, event_id: eventId })
+              body: JSON.stringify({ message: q, question: q, prompt: q, event_id: eventId })
             });
             const data = await res.json();
-            const reply = data.answer || data.error || 'No response generated.';
-            const modelTag = data.engine === 'ollama' ? `Qwen (${data.model})` : 'Smart Engine';
+            const reply = data.reply || data.answer || data.message || data.error || 'No response generated.';
+            const modelTag = data.engine === 'ollama' || (data.ai_provider && data.ai_provider.startsWith('ollama'))
+              ? `Qwen (${data.model || 'qwen2.5:3b'})`
+              : 'Smart Engine';
             this.updateAiChatMessage(typingId, reply, modelTag);
           } catch (err) {
             this.updateAiChatMessage(typingId, 'Error connecting to AI service. Please try again.', 'Error');

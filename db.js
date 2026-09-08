@@ -546,6 +546,128 @@ function seedDemoData() {
       role: 'participant'
     });
   }
+
+  // Ensure default campus events exist so semantic search and categories are immediately testable
+  const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get().count;
+  if (eventCount <= 1) {
+    console.log('Seeding campus demo events including Hackathons & Workshops...');
+    const now = new Date();
+
+    // 1. Flagship SRM National Hackathon at TP Ganesan
+    const hackDate1 = new Date(now.getTime() + 1 * 86400000);
+    hackDate1.setHours(9, 0, 0, 0);
+    const hackEnd1 = new Date(hackDate1.getTime() + 36 * 3600000);
+    createEvent({
+      id: 'evt_hackathon_tpganesan',
+      organizer_id: 'usr_org_default',
+      title: 'SRM HackMatrix 2026: 36-Hour National Hackathon',
+      description: 'Flagship 36-hour hackathon bringing together 300+ developers to build AI, IoT, Web3, and sustainability innovations.',
+      venue_name: 'TP Ganesan Main Auditorium',
+      static_code: 'HACK-SRM-2026',
+      latitude: 12.82315,
+      longitude: 80.04420,
+      radius_meters: 100,
+      start_time: hackDate1.toISOString(),
+      end_time: hackEnd1.toISOString(),
+      category: 'Hackathon',
+      is_active: 1,
+      dynamic_qr: 1,
+      allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
+      require_whitelist: 0
+    });
+
+    // 2. NextGen AI & Agentic LLM Morning Sprint
+    const hackDate2 = new Date(now.getTime() + 3 * 86400000);
+    hackDate2.setHours(9, 30, 0, 0);
+    const hackEnd2 = new Date(hackDate2.getTime() + 10 * 3600000);
+    createEvent({
+      id: 'evt_hackathon_ai_sprint',
+      organizer_id: 'usr_org_default',
+      title: 'NextGen AI & Agentic LLM Morning Hackathon',
+      description: 'Morning hackathon sprint building autonomous agents, on-device Qwen inference, and local LLM pipelines.',
+      venue_name: 'Tech Park 3rd Floor Innovation Lab',
+      static_code: 'AI-SPRINT-404',
+      latitude: 12.82480,
+      longitude: 80.04510,
+      radius_meters: 75,
+      start_time: hackDate2.toISOString(),
+      end_time: hackEnd2.toISOString(),
+      category: 'Hackathon',
+      is_active: 1,
+      dynamic_qr: 1,
+      allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
+      require_whitelist: 0
+    });
+
+    // 3. Hands-on Full-Stack Web & AI Workshop
+    const workshopDate = new Date(now.getTime() + 5 * 86400000);
+    workshopDate.setHours(14, 0, 0, 0);
+    const workshopEnd = new Date(workshopDate.getTime() + 3 * 3600000);
+    createEvent({
+      id: 'evt_workshop_fullstack',
+      organizer_id: 'usr_org_default',
+      title: 'Hands-on Spatial Geofencing & Zero-Dependency Node.js Workshop',
+      description: 'Lab session building geofenced attendance verification, WebRTC camera QR decoding, and cryptographic token streams.',
+      venue_name: 'University Building UB-602',
+      static_code: 'WORKSHOP-GEO-2026',
+      latitude: 12.82280,
+      longitude: 80.04350,
+      radius_meters: 50,
+      start_time: workshopDate.toISOString(),
+      end_time: workshopEnd.toISOString(),
+      category: 'Workshop',
+      is_active: 1,
+      dynamic_qr: 1,
+      allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
+      require_whitelist: 0
+    });
+
+    // 4. SRM Milan Cultural Fest & Keynote Gala
+    const culturalDate = new Date(now.getTime() + 7 * 86400000);
+    culturalDate.setHours(18, 0, 0, 0);
+    const culturalEnd = new Date(culturalDate.getTime() + 4 * 3600000);
+    createEvent({
+      id: 'evt_cultural_milan',
+      organizer_id: 'usr_org_default',
+      title: 'SRM Milan 2026 Cultural Fest & Keynote Gala',
+      description: 'Annual flagship university gathering featuring interactive tech exhibits, student performances, and keynote address.',
+      venue_name: 'TP Ganesan Auditorium',
+      static_code: 'MILAN-FEST-2026',
+      latitude: 12.82315,
+      longitude: 80.04420,
+      radius_meters: 150,
+      start_time: culturalDate.toISOString(),
+      end_time: culturalEnd.toISOString(),
+      category: 'Cultural',
+      is_active: 1,
+      dynamic_qr: 1,
+      allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
+      require_whitelist: 0
+    });
+
+    // 5. Cybersecurity & Zero-Trust Architecture Seminar
+    const seminarDate = new Date(now.getTime() + 10 * 86400000);
+    seminarDate.setHours(11, 0, 0, 0);
+    const seminarEnd = new Date(seminarDate.getTime() + 2 * 3600000);
+    createEvent({
+      id: 'evt_seminar_cybersec',
+      organizer_id: 'usr_org_default',
+      title: 'Zero-Trust Architecture & Cryptographic Token Security',
+      description: 'Academic lecture exploring HMAC sliding window tokens, OAuth 2.0 PKCE authentication, and anti-proxy gatekeeping.',
+      venue_name: 'Bio-Tech Seminar Hall',
+      static_code: 'SEMINAR-SEC-2026',
+      latitude: 12.82150,
+      longitude: 80.04280,
+      radius_meters: 60,
+      start_time: seminarDate.toISOString(),
+      end_time: seminarEnd.toISOString(),
+      category: 'Seminar',
+      is_active: 1,
+      dynamic_qr: 1,
+      allowed_emails: 'student@srmist.edu.in,nandhakishore.hi@gmail.com',
+      require_whitelist: 0
+    });
+  }
 }
 
 function getAttendeeHistoryByEmail(email) {

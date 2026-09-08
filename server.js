@@ -1038,7 +1038,8 @@ async function handleRequest(req, res) {
     // POST /api/ai/chat - Interactive organizer & student Q&A powered by local Qwen
     if (pathname === '/api/ai/chat' && method === 'POST') {
       const body = await parseJsonBody(req);
-      const { message, event_id } = body;
+      const message = body.message || body.question || body.prompt || '';
+      const event_id = body.event_id;
       if (!message) return sendJson(res, 400, { error: 'Message is required' });
 
       const allEvents = db.getAllEvents();
@@ -1071,7 +1072,11 @@ async function handleRequest(req, res) {
         allEvents,
         email
       );
-      return sendJson(res, 200, replyData);
+      return sendJson(res, 200, {
+        answer: replyData.reply,
+        reply: replyData.reply,
+        ...replyData
+      });
     }
 
     // GET /api/events/:id/ai-insights - AI Attendance Insights (Local Qwen + Heuristic Fallback)

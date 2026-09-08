@@ -312,7 +312,13 @@ ${upcomingContext}
   // Smart Heuristic Fallback
   const qLower = (question || '').toLowerCase();
   let heuristicReply = '';
-  if (qLower.includes('where') || qLower.includes('venue') || qLower.includes('location')) {
+  if (qLower.includes('announcement') || qLower.includes('latecomer') || (qLower.includes('late') && qLower.includes('draft'))) {
+    heuristicReply = `📢 [Announcement for Latecomers - ${event.title || 'Campus Session'}]\nAttention attendees: Check-in for "${event.title || 'the event'}" at ${event.venue_name || 'the venue'} is currently active. Please ensure you are physically within the ${event.radius_meters || 80}m perimeter with GPS location permissions enabled to complete verification.`;
+  } else if (qLower.includes('velocity') || qLower.includes('summarize attendance')) {
+    heuristicReply = `📊 [Attendance Velocity Summary - ${event.title || 'Event'}]\nTotal Scans: ${attendees.length} | Verified: ${verified} (${attendees.length > 0 ? Math.round((verified / attendees.length) * 100) : 0}%) | Out of Bounds: ${outOfBounds}. Average distance from venue center: ${stats?.metrics?.avgDistance || 0}m.`;
+  } else if (qLower.includes('breach') || qLower.includes('geofence')) {
+    heuristicReply = `🛡️ [Geofence Security Audit - ${event.title || 'Event'}]\nTotal out-of-bounds attempts: ${outOfBounds}. Geofence radius is calibrated at ${event.radius_meters || 80}m around ${event.venue_name || 'the venue'}. All coordinates outside the boundary are automatically quarantined and flagged.`;
+  } else if (qLower.includes('where') || qLower.includes('venue') || qLower.includes('location')) {
     heuristicReply = `The event "${event.title || 'Campus Event'}" is hosted at ${event.venue_name || 'SRM Campus'}. Check-in requires physical presence within a ${event.radius_meters || 80}m geofence radius.`;
   } else if (qLower.includes('late') || qLower.includes('time') || qLower.includes('when')) {
     heuristicReply = `Event scheduled start: ${event.start_time || 'Check campus catalog'}. Make sure your GPS is calibrated before scanning the dynamic QR code.`;
@@ -383,10 +389,11 @@ No other text.`;
     let score = 0;
     const hay = `${evt.title} ${evt.venue_name} ${evt.category || ''} ${evt.description || ''} ${evt.static_code || ''}`.toLowerCase();
     terms.forEach(t => {
-      if (hay.includes(t)) score += 5;
-      if (evt.title.toLowerCase().includes(t)) score += 12;
-      if (evt.venue_name.toLowerCase().includes(t)) score += 10;
-      if ((evt.category || '').toLowerCase().includes(t)) score += 15;
+      const root = t.endsWith('s') && t.length > 3 ? t.slice(0, -1) : t;
+      if (hay.includes(t) || (root !== t && hay.includes(root))) score += 5;
+      if (evt.title.toLowerCase().includes(t) || (root !== t && evt.title.toLowerCase().includes(root))) score += 12;
+      if (evt.venue_name.toLowerCase().includes(t) || (root !== t && evt.venue_name.toLowerCase().includes(root))) score += 10;
+      if ((evt.category || '').toLowerCase().includes(t) || (root !== t && (evt.category || '').toLowerCase().includes(root))) score += 15;
     });
 
     if (cleanQ.toLowerCase().includes('morning') && evt.start_time) {
