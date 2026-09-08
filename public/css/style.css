@@ -363,7 +363,207 @@ code, .font-mono {
   display: none;
 }
 
+/* ========================================================================= */
+/* DARK MODE THEME SYSTEM                                                    */
+/* ========================================================================= */
+html.dark {
+  --canvas-bg: #090d16;
+  --card-bg: #111726;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
 
+html.dark body {
+  background-color: #090d16;
+  color: #f8fafc;
+}
+
+/* Bento Cards in Dark Mode */
+html.dark .bento-card,
+html.dark .glass-panel {
+  background: #111726 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.65) !important;
+}
+
+html.dark .bento-subcard {
+  background: #172033 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Header in Dark Mode */
+html.dark header {
+  background-color: rgba(9, 13, 22, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark #btnToggleDarkMode {
+  background-color: #172033 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
+}
+
+html.dark #googleUserPill {
+  background-color: #172033 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark #googleUserName {
+  color: #f8fafc !important;
+}
+
+html.dark #googleUserEmail {
+  color: #94a3b8 !important;
+}
+
+/* Role Switcher in Dark Mode */
+html.dark #btnRoleOrganizer.bg-slate-950,
+html.dark #btnRoleAttendee.bg-slate-950 {
+  background-color: #f8fafc !important;
+  color: #090d16 !important;
+}
+
+html.dark #btnRoleOrganizer.text-slate-600,
+html.dark #btnRoleAttendee.text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+/* Typography in Dark Mode */
+html.dark .text-slate-950,
+html.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-800,
+html.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Form Inputs, Selects & Textareas in Dark Mode */
+html.dark input:not([type="checkbox"]):not([type="range"]),
+html.dark textarea,
+html.dark select {
+  background-color: #0d131f !important;
+  border-color: #243048 !important;
+  color: #f8fafc !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  background-color: #131c2e !important;
+  border-color: #60a5fa !important;
+}
+
+html.dark #attendeeEmail {
+  background-color: rgba(6, 78, 59, 0.3) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #34d399 !important;
+}
+
+/* Visor Badges in Dark Mode */
+html.dark .visor-badge {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95)) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+
+/* Circular Action Buttons in Dark Mode */
+html.dark .btn-circle-action {
+  background-color: #172033 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+
+html.dark .btn-circle-action:hover {
+  background-color: #222f46 !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Tables in Dark Mode */
+html.dark table thead tr {
+  background-color: #0d131f !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #94a3b8 !important;
+}
+
+html.dark table tbody tr {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.dark table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+html.dark .overflow-x-auto {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .status-filter-btn.bg-slate-950 {
+  background-color: #f8fafc !important;
+  color: #090d16 !important;
+}
+
+/* Modals & Dialogs in Dark Mode */
+html.dark #createEventModal .bento-card,
+html.dark #googleAuthModal .bento-card,
+html.dark #manageWhitelistModal .bento-card {
+  background-color: #111726 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+
+html.dark #btnCloseEventModal,
+html.dark #btnCloseGoogleModal,
+html.dark #btnCloseWhitelistModal {
+  background-color: #172033 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark #btnCloseEventModal:hover,
+html.dark #btnCloseGoogleModal:hover,
+html.dark #btnCloseWhitelistModal:hover {
+  background-color: #222f46 !important;
+  color: #ffffff !important;
+}
+
+/* GPS simulator preset buttons in Dark Mode */
+html.dark .gps-preset-btn {
+  background-color: #172033 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .gps-preset-btn:hover {
+  background-color: #222f46 !important;
+}
+
+/* Cards inside Upcoming Events Grid & History in Dark Mode */
+html.dark #upcomingEventsGrid > div,
+html.dark #attendeeHistoryList > div {
+  background-color: #141c2c !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+}
+
+html.dark #upcomingEventsGrid > div.ring-2 {
+  background-color: #090d16 !important;
+  border-color: #60a5fa !important;
+}
 
 /* Modal Pop Entrance Animation */
 @keyframes modalPop {
