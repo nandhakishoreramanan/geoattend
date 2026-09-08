@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 440" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Gradients matching BLITZ Sunset & Visor palette -->
+    <linearGradient id="sunsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd3c4" />
+      <stop offset="50%" stop-color="#fbcfe8" />
+      <stop offset="100%" stop-color="#fed7aa" />
+    </linearGradient>
+    <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffc3a0" />
+      <stop offset="40%" stop-color="#ffafbd" />
+      <stop offset="100%" stop-color="#7ee8fa" />
+    </linearGradient>
+    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0" />
+      <stop offset="20%" stop-color="#38bdf8" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#a855f7" stop-opacity="1" />
+      <stop offset="80%" stop-color="#38bdf8" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Card Background Surface -->
+  <rect x="10" y="10" width="360" height="420" rx="32" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#softShadow)" />
+
+  <!-- Concentric Geometric Radar / Arc Patterns (from BLITZ 3D card) -->
+  <g opacity="0.45" stroke="#cbd5e1" stroke-width="1" fill="none">
+    <circle cx="190" cy="210" r="160" stroke-dasharray="4 6" />
+    <circle cx="190" cy="210" r="130" />
+    <circle cx="190" cy="210" r="100" stroke-dasharray="2 4" />
+    <circle cx="190" cy="210" r="70" />
+    <path d="M 30 210 L 350 210" stroke-dasharray="4 8" opacity="0.3" />
+    <path d="M 190 50 L 190 370" stroke-dasharray="4 8" opacity="0.3" />
+  </g>
+
+  <!-- Top Metadata Header -->
+  <g transform="translate(32, 38)">
+    <rect x="0" y="0" width="8" height="8" rx="4" fill="#10b981" />
+    <text x="16" y="8" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" fill="#0f172a" letter-spacing="1.5">GEOATTEND // PASS</text>
+    <text x="240" y="8" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="600" fill="#64748b" text-anchor="end">12.823° N 80.044° E</text>
+  </g>
+
+  <!-- QR Outer Viewfinder Frame -->
+  <g transform="translate(85, 85)">
+    <!-- Viewfinder Brackets -->
+    <path d="M -8 18 L -8 -8 L 18 -8" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 192 -8 L 218 -8 L 218 18" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M -8 192 L -8 218 L 18 218" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 192 218 L 218 218 L 218 192" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- QR Background Tile -->
+    <rect x="0" y="0" width="210" height="210" rx="20" fill="#ffffff" stroke="#f1f5f9" stroke-width="2" />
+
+    <!-- TOP-LEFT FINDER PATTERN -->
+    <rect x="15" y="15" width="50" height="50" rx="12" fill="none" stroke="#0f172a" stroke-width="6" />
+    <rect x="26" y="26" width="28" height="28" rx="6" fill="#0f172a" />
+
+    <!-- TOP-RIGHT FINDER PATTERN -->
+    <rect x="145" y="15" width="50" height="50" rx="12" fill="none" stroke="#0f172a" stroke-width="6" />
+    <rect x="156" y="26" width="28" height="28" rx="6" fill="#0f172a" />
+
+    <!-- BOTTOM-LEFT FINDER PATTERN -->
+    <rect x="15" y="145" width="50" height="50" rx="12" fill="none" stroke="#0f172a" stroke-width="6" />
+    <rect x="26" y="156" width="28" height="28" rx="6" fill="#0f172a" />
+
+    <!-- QR DATA MATRIX MODULES (Precision Geometric Layout) -->
+    <!-- Row 1-2 Timing bar -->
+    <g fill="#0f172a">
+      <rect x="75" y="25" width="8" height="8" rx="2.5" />
+      <rect x="92" y="25" width="8" height="8" rx="2.5" />
+      <rect x="109" y="25" width="8" height="8" rx="2.5" />
+      <rect x="126" y="25" width="8" height="8" rx="2.5" />
+      
+      <rect x="75" y="42" width="8" height="8" rx="2.5" />
+      <rect x="109" y="42" width="8" height="8" rx="2.5" />
+      <rect x="126" y="42" width="8" height="8" rx="2.5" />
+
+      <rect x="75" y="59" width="8" height="8" rx="2.5" />
+      <rect x="92" y="59" width="8" height="8" rx="2.5" />
+      <rect x="126" y="59" width="8" height="8" rx="2.5" />
+
+      <!-- Vertical timing -->
+      <rect x="25" y="75" width="8" height="8" rx="2.5" />
+      <rect x="25" y="92" width="8" height="8" rx="2.5" />
+      <rect x="25" y="109" width="8" height="8" rx="2.5" />
+      <rect x="25" y="126" width="8" height="8" rx="2.5" />
+
+      <rect x="42" y="75" width="8" height="8" rx="2.5" />
+      <rect x="42" y="109" width="8" height="8" rx="2.5" />
+
+      <rect x="59" y="92" width="8" height="8" rx="2.5" />
+      <rect x="59" y="126" width="8" height="8" rx="2.5" />
+
+      <!-- Central Modules -->
+      <rect x="75" y="75" width="18" height="18" rx="4" />
+      <rect x="102" y="75" width="8" height="8" rx="2.5" />
+      <rect x="119" y="75" width="16" height="8" rx="2.5" />
+      <rect x="145" y="75" width="8" height="18" rx="2.5" />
+      <rect x="162" y="75" width="25" height="8" rx="2.5" />
+
+      <rect x="102" y="92" width="18" height="18" rx="4" />
+      <rect x="129" y="92" width="8" height="8" rx="2.5" />
+      <rect x="156" y="92" width="18" height="8" rx="2.5" />
+      <rect x="183" y="92" width="8" height="18" rx="2.5" />
+
+      <rect x="75" y="102" width="8" height="18" rx="2.5" />
+      <rect x="92" y="119" width="8" height="8" rx="2.5" />
+      <rect x="109" y="119" width="25" height="8" rx="2.5" />
+      <rect x="145" y="102" width="25" height="8" rx="2.5" />
+      <rect x="179" y="119" width="12" height="8" rx="2.5" />
+
+      <rect x="75" y="129" width="18" height="8" rx="2.5" />
+      <rect x="102" y="136" width="8" height="18" rx="2.5" />
+      <rect x="119" y="136" width="18" height="8" rx="2.5" />
+      <rect x="145" y="120" width="8" height="8" rx="2.5" />
+      <rect x="162" y="129" width="18" height="18" rx="4" />
+
+      <rect x="75" y="145" width="8" height="8" rx="2.5" />
+      <rect x="92" y="154" width="18" height="8" rx="2.5" />
+      <rect x="119" y="154" width="8" height="18" rx="2.5" />
+      <rect x="136" y="145" width="18" height="8" rx="2.5" />
+      <rect x="162" y="154" width="8" height="18" rx="2.5" />
+      <rect x="179" y="145" width="12" height="8" rx="2.5" />
+
+      <!-- Alignment pattern near bottom right -->
+      <rect x="138" y="168" width="30" height="30" rx="8" fill="none" stroke="#0f172a" stroke-width="4" />
+      <rect x="148" y="178" width="10" height="10" rx="3" />
+
+      <rect x="75" y="172" width="18" height="8" rx="2.5" />
+      <rect x="102" y="181" width="18" height="8" rx="2.5" />
+      <rect x="177" y="172" width="14" height="8" rx="2.5" />
+      <rect x="177" y="189" width="14" height="8" rx="2.5" />
+    </g>
+
+    <!-- Center Anti-Proxy Shield Icon -->
+    <rect x="84" y="84" width="42" height="42" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="3" filter="url(#softShadow)" />
+    <path d="M 105 94 L 117 99 L 117 109 C 117 116 105 122 105 122 C 105 122 93 116 93 109 L 93 99 Z" fill="url(#sunsetGrad)" stroke="#0f172a" stroke-width="2" stroke-linejoin="round" />
+    <path d="M 101 107 L 104 110 L 110 104" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Laser Scan Beam Effect -->
+    <line x1="-10" y1="105" x2="220" y2="105" stroke="url(#laserGrad)" stroke-width="3.5" filter="url(#glow)" />
+  </g>
+
+  <!-- Bottom Badges & Telemetry Bar -->
+  <g transform="translate(32, 325)">
+    <!-- Floating Holographic Pill: Dynamic 20s QR -->
+    <rect x="0" y="0" width="160" height="30" rx="15" fill="url(#visorGrad)" />
+    <text x="80" y="19" font-family="'Plus Jakarta Sans', sans-serif" font-size="10.5" font-weight="800" fill="#0f172a" text-anchor="middle" letter-spacing="0.5">✦ ROTATING 20s TOKEN</text>
+
+    <!-- Geofence 100m Pill -->
+    <rect x="170" y="0" width="145" height="30" rx="15" fill="#0f172a" />
+    <text x="242" y="19" font-family="'Plus Jakarta Sans', sans-serif" font-size="10.5" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">◎ GEOFENCE: 100M</text>
+  </g>
+
+  <!-- Micro Footer Line -->
+  <g transform="translate(32, 385)">
+    <text x="0" y="10" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="600" fill="#94a3b8" letter-spacing="1">HMAC-SHA256 ENCRYPTED</text>
+    <text x="315" y="10" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#10b981" text-anchor="end">● ANTI-PROXY LIVE</text>
+  </g>
+</svg>
