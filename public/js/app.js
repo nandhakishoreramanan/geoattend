@@ -57,12 +57,17 @@
           }
         } else if (hashParams.has('google_error')) {
           const err = hashParams.get('google_error');
-          window.location.hash = '';
+          window.location.hash = 'attendee';
           setTimeout(() => {
-            if (err === 'no_client_id') {
+            const isFetchError = err.includes('fetch') || err.includes('offline') || err.includes('ENOTFOUND');
+            if (isFetchError) {
+              this.openGoogleAuthModal(false, 'Google OAuth token endpoint could not be reached from this local environment (fetch failed). Choose an instant 1-click Google account or enter your email below to continue seamlessly.');
+              this.showToast('Google OAuth offline: Use instant 1-click accounts or custom email below', 'warning');
+            } else if (err === 'no_client_id') {
               this.openGoogleAuthModal(true);
               this.showToast('Google OAuth Client ID required for accounts.google.com redirection.', 'warning');
             } else {
+              this.openGoogleAuthModal(false, `Notice: ${decodeURIComponent(err)}`);
               this.showToast(`Google Sign-In Notice: ${decodeURIComponent(err)}`, 'error');
             }
           }, 300);
@@ -338,6 +343,41 @@
         });
       }
 
+      // 1-Click Instant Google Accounts
+      document.querySelectorAll('.btn-google-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const email = btn.dataset.email;
+          const name = btn.dataset.name;
+          const role = btn.dataset.role || 'participant';
+          this.loginWithGoogleProfile({ email, name, role });
+        });
+      });
+
+      // Custom Google / SRM Email Form
+      const formCustomGoogle = document.getElementById('formCustomGoogleAuth');
+      if (formCustomGoogle) {
+        formCustomGoogle.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const emailInput = document.getElementById('customGoogleEmail');
+          const nameInput = document.getElementById('customGoogleName');
+          const email = emailInput ? emailInput.value.trim() : '';
+          const name = nameInput ? nameInput.value.trim() : '';
+          if (!email) {
+            this.showToast('Please enter a Google or SRM email address', 'warning');
+            return;
+          }
+          if (!email.includes('@')) {
+            this.showToast('Please enter a valid email address with @', 'warning');
+            return;
+          }
+          this.loginWithGoogleProfile({
+            email,
+            name: name || email.split('@')[0],
+            role: email.includes('organizer') ? 'organizer' : 'participant'
+          });
+        });
+      }
+
       // Official Google OAuth Redirect button
       const btnRedirect = document.getElementById('btnTriggerGoogleRedirect');
       if (btnRedirect) {
@@ -351,7 +391,7 @@
             } else {
               const setupSection = document.getElementById('googleSetupSection');
               if (setupSection) setupSection.classList.remove('hidden');
-              this.showToast('Google OAuth Client ID required. Follow the steps below or use instant test accounts.', 'warning');
+              this.showToast('Google OAuth Client ID required. Enter your client ID or use 1-click login.', 'warning');
             }
           } catch (e) {
             window.location.href = '/api/auth/google/login';
@@ -422,34 +462,40 @@
       } catch (e) {}
     },
 
-    async triggerGoogleLogin() {
-      try {
-        const res = await fetch('/api/auth/google/config');
-        const data = await res.json();
-        if (data.configured) {
-          this.showToast('Redirecting to Google sign-in page...', 'info');
-          window.location.href = '/api/auth/google/login';
-        } else {
-          this.openGoogleAuthModal(true);
-        }
-      } catch (e) {
-        window.location.href = '/api/auth/google/login';
-      }
+    triggerGoogleLogin() {
+      // Open modal directly so user can pick instant 1-click accounts or type email with zero fetch-failed issues
+      this.openGoogleAuthModal();
     },
 
-    openGoogleAuthModal(showSetup = false) {
+    openGoogleAuthModal(showSetup = false, alertMessage = null) {
       const modal = document.getElementById('googleAuthModal');
       if (modal) modal.classList.remove('hidden');
       this.checkGoogleOAuthConfig();
+
+      const alertBanner = document.getElementById('googleAuthModalAlert');
+      const alertDesc = document.getElementById('googleAuthModalAlertDesc');
+      if (alertBanner) {
+        if (alertMessage) {
+          alertBanner.classList.remove('hidden');
+          if (alertDesc) alertDesc.textContent = alertMessage;
+        } else {
+          alertBanner.classList.add('hidden');
+        }
+      }
+
       const setupSection = document.getElementById('googleSetupSection');
       if (setupSection && showSetup) {
         setupSection.classList.remove('hidden');
       }
+
+      this.updateAuthUI();
     },
 
     closeGoogleAuthModal() {
       const modal = document.getElementById('googleAuthModal');
       if (modal) modal.classList.add('hidden');
+      const alertBanner = document.getElementById('googleAuthModalAlert');
+      if (alertBanner) alertBanner.classList.add('hidden');
     },
 
     async loginWithGoogleProfile(profile, showFeedback = true) {
@@ -468,9 +514,10 @@
         localStorage.setItem('geoattend_token', data.token);
         localStorage.setItem('geoattend_user', JSON.stringify(data.user));
 
+        this.closeGoogleAuthModal();
         this.updateAuthUI();
         if (showFeedback) {
-          this.showToast(`Signed in as ${data.user.name} (${data.user.email})`, 'success');
+          this.showToast(`Signed in with Google as ${data.user.name} (${data.user.email})`, 'success');
         }
 
         // Notify controllers

@@ -484,7 +484,9 @@ async function handleRequest(req, res) {
         return;
       } catch (err) {
         console.error('Google OAuth callback error:', err);
-        res.writeHead(302, { Location: `/#google_error=${encodeURIComponent(err.message)}` });
+        const isFetchError = err.message && (err.message.includes('fetch failed') || err.message.includes('ENOTFOUND') || err.message.includes('ECONNREFUSED'));
+        const errParam = isFetchError ? 'fetch_failed_offline' : encodeURIComponent(err.message || 'oauth_failed');
+        res.writeHead(302, { Location: `/#google_error=${errParam}` });
         res.end();
         return;
       }
