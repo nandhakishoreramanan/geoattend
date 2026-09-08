@@ -15,7 +15,7 @@
  */
 
 let OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
-let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
+let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b';
 
 /**
  * Check if local Ollama daemon is running and detect installed models
@@ -23,16 +23,20 @@ let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
 async function getOllamaStatus() {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
     const res = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
       const models = (data.models || []).map(m => m.name);
-      // If qwen2.5:3b or qwen:4b is installed, prefer it for higher reasoning unless overridden
-      if (!process.env.OLLAMA_MODEL && models.some(m => m.includes('qwen2.5:3b') || m.includes('qwen:4b'))) {
-        ACTIVE_MODEL = models.find(m => m.includes('qwen2.5:3b')) || models.find(m => m.includes('qwen:4b')) || ACTIVE_MODEL;
+      // Prefer qwen2.5:3b if available
+      if (!process.env.OLLAMA_MODEL) {
+        if (models.some(m => m.includes('qwen2.5:3b'))) {
+          ACTIVE_MODEL = models.find(m => m.includes('qwen2.5:3b'));
+        } else if (models.length > 0) {
+          ACTIVE_MODEL = models[0];
+        }
       }
       const isModelInstalled = models.some(m => m.startsWith(ACTIVE_MODEL.split(':')[0]));
       return {
@@ -76,7 +80,7 @@ function setOllamaConfig(config = {}) {
 /**
  * Call local Ollama generate endpoint with safe timeout and fallback
  */
-async function callLocalOllama(prompt, systemPrompt = '', timeoutMs = 3500) {
+async function callLocalOllama(prompt, systemPrompt = '', timeoutMs = 12000, maxTokens = 180) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -92,7 +96,7 @@ async function callLocalOllama(prompt, systemPrompt = '', timeoutMs = 3500) {
         options: {
           temperature: 0.6,
           top_p: 0.9,
-          num_predict: 256
+          num_predict: maxTokens
         }
       }),
       signal: controller.signal
@@ -263,18 +267,26 @@ async function askEventAssistant(question, contextData = {}) {
 
   // Support both legacy positional arguments (question, event, attendees, stats)
   // and modern object contextData
-  if (arguments.length > 1 && !contextData.question) {
-    event = arguments[1] || {};
-    attendees = arguments[2] || [];
-    stats = arguments[3] || {};
-    upcomingEvents = arguments[4] || [];
-    attendeeEmail = arguments[5] || '';
-  } else if (typeof contextData === 'object') {
+  if (typeof contextData === 'object' && (contextData.event || contextData.upcomingEvents || contextData.attendees)) {
     event = contextData.event || {};
     attendees = contextData.attendees || [];
     stats = contextData.stats || {};
     upcomingEvents = contextData.upcomingEvents || [];
     attendeeEmail = contextData.attendeeEmail || '';
+  } else {
+    event = arguments[1] || {};
+    attendees = arguments[2] || [];
+    stats = arguments[3] || {};
+    upcomingEvents = arguments[4] || [];
+    attendeeEmail = arguments[5] || '';
+  }
+
+  // Ensure upcoming events catalog is always populated from DB if not passed
+  if (!upcomingEvents || upcomingEvents.length === 0) {
+    try {
+      const db = require('./db');
+      upcomingEvents = db.getAllEvents();
+    } catch (e) {}
   }
 
   const verified = attendees.filter(a => a.status === 'VERIFIED').length;
@@ -282,25 +294,26 @@ async function askEventAssistant(question, contextData = {}) {
 
   let upcomingContext = '';
   if (upcomingEvents && upcomingEvents.length > 0) {
-    upcomingContext = `\nAll Campus Upcoming Events:\n` + upcomingEvents.map(e => `- "${e.title}" at ${e.venue_name} (Category: ${e.category || 'Tech'}, Radius: ${e.radius_meters}m, Starts: ${e.start_time})`).slice(0, 6).join('\n');
+    upcomingContext = `\nScheduled Campus Events Catalog:\n` + upcomingEvents.map(e => `- "${e.title}" | Track: ${e.category || 'Tech'} | Venue: ${e.venue_name} | Radius: ${e.radius_meters}m | Scheduled: ${e.start_time || 'Check calendar'}`).join('\n');
   }
 
   const context = `
 Active Selected Event: "${event.title || 'General Campus Session'}"
 Venue: ${event.venue_name || 'SRM Kattankulathur Campus'}
+Track / Category: ${event.category || 'Tech / AI'}
 Geofence Radius: ${event.radius_meters || 80}m
 Total Attendees Scanned: ${attendees.length}
 Verified On-Site: ${verified}
 Out-of-Bounds Attempts: ${outOfBounds}
 Average Distance: ${stats?.metrics?.avgDistance || 0}m
-Attendee Identity: ${attendeeEmail || 'Campus Guest / Student'}
+User Identity: ${attendeeEmail || 'Campus Guest / Student'}
 ${upcomingContext}
 `;
 
-  const prompt = `Context:\n${context}\n\nUser Question: ${question}\n\nProvide a concise, accurate, and actionable answer based strictly on the campus context.`;
+  const prompt = `Context:\n${context}\n\nUser Question: ${question}\n\nProvide a concise, helpful, and friendly answer based strictly on the campus context. If asked about upcoming events or hackathons, list the matching events with their venue.`;
   const systemPrompt = `You are GeoAttend AI, an intelligent campus event assistant powered by local Qwen via Ollama. Assist students and organizers with attendance verification, event schedules, venue navigation, and geofence rules. Keep replies concise and friendly.`;
 
-  const reply = await callLocalOllama(prompt, systemPrompt, 4000);
+  const reply = await callLocalOllama(prompt, systemPrompt, 12000, 160);
 
   if (reply && reply.length > 10) {
     return {
@@ -312,7 +325,11 @@ ${upcomingContext}
   // Smart Heuristic Fallback
   const qLower = (question || '').toLowerCase();
   let heuristicReply = '';
-  if (qLower.includes('announcement') || qLower.includes('latecomer') || (qLower.includes('late') && qLower.includes('draft'))) {
+  if (qLower.match(/^(hi|hii|hiii|hello|hey|greetings|howdy|hola|yo|good\s*(morning|afternoon|evening))\b/i)) {
+    heuristicReply = `Hello! 👋 I'm your GeoAttend AI campus concierge. How can I help you today? You can ask me about upcoming hackathons, event timings, venue directions at TP Ganesan or Tech Park, or checking in within the geofence perimeter.`;
+  } else if (qLower.includes('hackathon')) {
+    heuristicReply = `⚡ Upcoming Campus Hackathons:\n1. "SRM HackMatrix 2026: 36-Hour National Hackathon" at TP Ganesan Main Auditorium\n2. "NextGen AI & Agentic LLM Morning Hackathon" at Tech Park 3rd Floor Lab\nBoth events feature live dynamic QR check-ins with verified geofencing.`;
+  } else if (qLower.includes('announcement') || qLower.includes('latecomer') || (qLower.includes('late') && qLower.includes('draft'))) {
     heuristicReply = `📢 [Announcement for Latecomers - ${event.title || 'Campus Session'}]\nAttention attendees: Check-in for "${event.title || 'the event'}" at ${event.venue_name || 'the venue'} is currently active. Please ensure you are physically within the ${event.radius_meters || 80}m perimeter with GPS location permissions enabled to complete verification.`;
   } else if (qLower.includes('velocity') || qLower.includes('summarize attendance')) {
     heuristicReply = `📊 [Attendance Velocity Summary - ${event.title || 'Event'}]\nTotal Scans: ${attendees.length} | Verified: ${verified} (${attendees.length > 0 ? Math.round((verified / attendees.length) * 100) : 0}%) | Out of Bounds: ${outOfBounds}. Average distance from venue center: ${stats?.metrics?.avgDistance || 0}m.`;
