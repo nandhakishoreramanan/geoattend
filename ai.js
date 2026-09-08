@@ -310,12 +310,23 @@ User Identity: ${attendeeEmail || 'Campus Guest / Student'}
 ${upcomingContext}
 `;
 
-  const prompt = `Context:\n${context}\n\nUser Question: ${question}\n\nProvide a concise, helpful, and friendly answer based strictly on the campus context. If asked about upcoming events or hackathons, list the matching events with their venue.`;
-  const systemPrompt = `You are GeoAttend AI, an intelligent campus event assistant powered by local Qwen via Ollama. Assist students and organizers with attendance verification, event schedules, venue navigation, and geofence rules. Keep replies concise and friendly.`;
+  const systemPrompt = `You are GeoAttend AI, a friendly, intelligent campus event assistant powered by local Qwen.
+Provide helpful, conversational, and direct answers based on the campus and event context.
+Guidelines:
+- If the user sends a greeting or casual remark (e.g. "hi", "hey", "hmm", "cool", "ok", "thanks"), respond naturally and warmly like a human conversational assistant, asking how you can help them.
+- Do NOT list all upcoming events or dump catalogs unless the user specifically asks for upcoming events, schedules, or hackathons.
+- Keep your answers concise, natural, and helpful.`;
+
+  const prompt = `Context:
+${context}
+
+User Message: "${question}"
+
+Assistant Reply:`;
 
   const reply = await callLocalOllama(prompt, systemPrompt, 12000, 160);
 
-  if (reply && reply.length > 10) {
+  if (reply && reply.length > 5) {
     return {
       reply,
       ai_provider: `ollama/${ACTIVE_MODEL}`
@@ -323,10 +334,14 @@ ${upcomingContext}
   }
 
   // Smart Heuristic Fallback
-  const qLower = (question || '').toLowerCase();
+  const qLower = (question || '').toLowerCase().trim();
   let heuristicReply = '';
   if (qLower.match(/^(hi|hii|hiii|hello|hey|greetings|howdy|hola|yo|good\s*(morning|afternoon|evening))\b/i)) {
     heuristicReply = `Hello! 👋 I'm your GeoAttend AI campus concierge. How can I help you today? You can ask me about upcoming hackathons, event timings, venue directions at TP Ganesan or Tech Park, or checking in within the geofence perimeter.`;
+  } else if (qLower.match(/^(hmm+|um+|uh+|okay|ok|alright|cool|nice|great|got it|sure|interesting)\b/i)) {
+    heuristicReply = `I'm here whenever you have questions! Feel free to ask about upcoming hackathons, event timings, venue directions, or attendance geofence verification. What's on your mind?`;
+  } else if (qLower.match(/^(thanks|thank you|thx|cheers|appreciate it)\b/i)) {
+    heuristicReply = `You're very welcome! Let me know if you need anything else regarding campus events or attendance check-ins. Have a great session! 🚀`;
   } else if (qLower.includes('hackathon')) {
     heuristicReply = `⚡ Upcoming Campus Hackathons:\n1. "SRM HackMatrix 2026: 36-Hour National Hackathon" at TP Ganesan Main Auditorium\n2. "NextGen AI & Agentic LLM Morning Hackathon" at Tech Park 3rd Floor Lab\nBoth events feature live dynamic QR check-ins with verified geofencing.`;
   } else if (qLower.includes('announcement') || qLower.includes('latecomer') || (qLower.includes('late') && qLower.includes('draft'))) {
@@ -380,7 +395,7 @@ No other text.`;
   const systemPrompt = `You are a campus event search engine. Match user queries by topic, venue, date/time, or category. Respond with raw JSON only.`;
 
   try {
-    const qwenText = await callLocalOllama(prompt, systemPrompt, 3500);
+    const qwenText = await callLocalOllama(prompt, systemPrompt, 12000, 160);
     if (qwenText) {
       const jsonMatch = qwenText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -421,41 +436,51 @@ No other text.`;
       const hour = new Date(evt.start_time).getHours();
       if (hour >= 12 && hour < 17) score += 10;
     }
+    if (cleanQ.toLowerCase().includes('weekend')) {
+      const day = new Date(evt.start_time).getDay();
+      if (day === 0 || day === 6) score += 10;
+    }
 
-    return { ...evt, score };
-  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
+    return { ...evt, _score: score };
+  })
+  .filter(e => e._score > 0)
+  .sort((a, b) => b._score - a._score)
+  .map(e => {
+    const { _score, ...rest } = e;
+    return rest;
+  });
 
   return {
     matches: scored.length > 0 ? scored : events,
     explanation: scored.length > 0
-      ? `Found ${scored.length} event(s) matching "${cleanQ}".`
-      : `No exact matches for "${cleanQ}". Displaying all available events.`,
+      ? `Smart Engine: Found ${scored.length} event(s) matching "${cleanQ}".`
+      : `No direct matches found for "${cleanQ}". Showing all campus events.`,
     query: cleanQ,
     ai_provider: 'deterministic_search'
   };
 }
 
 /**
- * Personalized Event Recommendations
- * Analyzes attendee's past check-ins and suggests relevant upcoming sessions with match score & rationale.
+ * Personalized Event Recommendations for Attendees
+ * Recommends events based on past verified check-ins and tracks.
  */
-async function generateEventRecommendations(attendeeEmail, attendeeHistory = [], upcomingEvents = []) {
+async function generateEventRecommendations(attendeeEmail, history = [], upcomingEvents = []) {
   if (!upcomingEvents || upcomingEvents.length === 0) {
-    return { recommendations: [], explanation: 'No upcoming events currently scheduled.' };
+    return { recommendations: [], ai_provider: 'none' };
   }
 
-  const pastCategories = (attendeeHistory || []).map(h => h.category || 'Tech / AI');
-  const pastVenues = (attendeeHistory || []).map(h => h.venue_name || '');
+  const pastCategories = [...new Set(history.map(h => h.category || 'Tech / AI'))];
+  const pastVenues = [...new Set(history.map(h => h.venue || 'TP Ganesan'))];
 
-  // Try local Qwen model first
-  const historyText = (attendeeHistory || []).map(h => `"${h.title}" (${h.venue_name}, Category: ${h.category || 'Tech'})`).join(', ') || 'No previous attendance records';
-  const upcomingText = upcomingEvents.map(e => `ID: ${e.id} | "${e.title}" (${e.venue_name}, Category: ${e.category || 'Tech'})`).join('\n');
+  const eventsCatalog = upcomingEvents.map(e => `ID: ${e.id} | Title: "${e.title}" | Venue: "${e.venue_name}" | Track: ${e.category || 'Tech'} | Radius: ${e.radius_meters}m`).join('\n');
 
-  const prompt = `Attendee: ${attendeeEmail || 'Student'}
-Past Check-in History: ${historyText}
+  const prompt = `Attendee Profile:
+- Email: ${attendeeEmail || 'student@srmist.edu.in'}
+- Past Verified Tracks: ${pastCategories.join(', ') || 'Tech / AI, Hackathons'}
+- Favorite Venues: ${pastVenues.join(', ') || 'TP Ganesan, Tech Park'}
 
-Upcoming Events:
-${upcomingText}
+Available Upcoming Events:
+${eventsCatalog}
 
 Task:
 Recommend up to 3 upcoming events for this student. Return ONLY valid JSON in this format:
@@ -465,7 +490,7 @@ No other text.`;
   const systemPrompt = `You are GeoAttend AI recommender. Score event relevance from 70-98 based on user interests, location, and seminar topics. Respond with raw JSON only.`;
 
   try {
-    const qwenText = await callLocalOllama(prompt, systemPrompt, 3500);
+    const qwenText = await callLocalOllama(prompt, systemPrompt, 12000, 200);
     if (qwenText) {
       const jsonMatch = qwenText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -478,6 +503,9 @@ No other text.`;
               return {
                 event: evt,
                 event_id: evt.id,
+                title: evt.title,
+                venue_name: evt.venue_name,
+                category: evt.category || 'Tech / AI',
                 match_score: Math.min(99, Math.max(65, parseInt(r.match_score, 10) || 85)),
                 rationale: r.rationale || `Recommended based on your interest in ${evt.category || 'campus events'}.`
               };
@@ -512,6 +540,9 @@ No other text.`;
     return {
       event: evt,
       event_id: evt.id,
+      title: evt.title,
+      venue_name: evt.venue_name,
+      category: cat,
       match_score: Math.min(98, score + Math.floor(Math.random() * 5)),
       rationale
     };

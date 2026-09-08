@@ -607,12 +607,15 @@
         btnOrg?.classList.remove('bg-slate-950', 'text-white', 'shadow-sm');
         btnOrg?.classList.add('text-slate-600');
 
-        // Refresh attendee upcoming events and pass card immediately
+        // Refresh attendee upcoming events, pass card, and acquire GPS immediately
         if (global.Attendee && typeof global.Attendee.loadUpcomingEvents === 'function') {
           global.Attendee.loadUpcomingEvents();
         }
         if (global.Attendee && typeof global.Attendee.refreshPassCard === 'function') {
           global.Attendee.refreshPassCard();
+        }
+        if (global.Attendee && typeof global.Attendee.acquireDeviceGPS === 'function') {
+          global.Attendee.acquireDeviceGPS();
         }
       }
 

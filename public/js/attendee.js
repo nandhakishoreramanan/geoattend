@@ -30,6 +30,7 @@
       if (window.App && window.App.currentUser) {
         this.onUserAuthChanged(window.App.currentUser);
       }
+      this.acquireDeviceGPS();
     },
 
     onUserAuthChanged(user) {
@@ -479,18 +480,22 @@
             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
             : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-700';
 
+          const cardTitle = rec.title || rec.event?.title || 'Campus Event';
+          const cardVenue = rec.venue_name || rec.event?.venue_name || 'SRM Campus';
+          const cardCategory = rec.category || rec.event?.category || 'Tech';
+
           card.innerHTML = `
             <div class="space-y-1.5">
               <div class="flex items-center justify-between gap-1">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${scoreColor} border">
                   ⭐ ${rec.match_score}% Match
                 </span>
-                <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">${rec.category || 'Tech'}</span>
+                <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">${cardCategory}</span>
               </div>
-              <h4 class="font-black text-xs text-slate-900 dark:text-white line-clamp-1">${rec.title}</h4>
+              <h4 class="font-black text-xs text-slate-900 dark:text-white line-clamp-1">${cardTitle}</h4>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
                 <span>📍</span>
-                <span>${rec.venue_name}</span>
+                <span>${cardVenue}</span>
               </p>
               <p class="text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-2 pt-0.5 leading-snug">
                 "${rec.rationale || 'Recommended based on your attendance profile.'}"
@@ -575,14 +580,12 @@
       this.selectedEventId = evt.id;
       this.renderUpcomingEvents(this.eventsList);
 
-      // Auto select GPS coordinates near venue center for easy testing
-      this.currentCoords = {
-        latitude: evt.latitude + 0.00010,
-        longitude: evt.longitude + 0.00008,
-        accuracy: 5,
-        label: `Venue: ${evt.venue_name} (~14m away)`
-      };
-      this.updateGpsUI(this.currentCoords);
+      // Maintain real device GPS coordinates - never overwrite with fake venue center
+      if (this.currentCoords) {
+        this.updateGpsUI(this.currentCoords);
+      } else {
+        this.acquireDeviceGPS();
+      }
 
       // Refresh personal Google Pass card for this event
       await this.refreshPassCard();
@@ -1027,6 +1030,19 @@
       window.App?.showToast(`Preset Applied: ${label}`, 'info');
     },
 
+    calculateDistance(lat1, lon1, lat2, lon2) {
+      if (lat1 === lat2 && lon1 === lon2) return 0;
+      const R = 6371000;
+      const toRad = deg => (deg * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c);
+    },
+
     updateGpsUI(coords) {
       const latEl = document.getElementById('gpsLatDisplay');
       const lngEl = document.getElementById('gpsLngDisplay');
@@ -1034,11 +1050,26 @@
 
       if (latEl) latEl.textContent = coords.latitude.toFixed(6);
       if (lngEl) lngEl.textContent = coords.longitude.toFixed(6);
+
+      const evt = this.selectedEventId ? (this.eventsList || []).find(e => e.id === this.selectedEventId) : null;
       if (statusEl) {
-        statusEl.textContent = coords.label
-          ? `Active GPS: ${coords.label}`
-          : `Device GPS Active (±${Math.round(coords.accuracy || 10)}m)`;
-        statusEl.className = 'text-xs text-emerald-400 font-medium';
+        if (coords.label) {
+          statusEl.textContent = `Active GPS: ${coords.label}`;
+          statusEl.className = 'text-xs text-amber-400 font-medium';
+        } else if (evt && evt.latitude && evt.longitude) {
+          const dist = this.calculateDistance(coords.latitude, coords.longitude, evt.latitude, evt.longitude);
+          const within = dist <= evt.radius_meters;
+          if (within) {
+            statusEl.innerHTML = `● Inside Geofence (${dist}m from ${evt.venue_name}, limit ${evt.radius_meters}m)`;
+            statusEl.className = 'text-xs text-emerald-400 font-medium';
+          } else {
+            statusEl.innerHTML = `⚠️ Outside Geofence (${dist}m from ${evt.venue_name}, limit ${evt.radius_meters}m)`;
+            statusEl.className = 'text-xs text-rose-400 font-medium';
+          }
+        } else {
+          statusEl.textContent = `Device GPS Active (±${Math.round(coords.accuracy || 10)}m)`;
+          statusEl.className = 'text-xs text-emerald-400 font-medium';
+        }
       }
     },
 
@@ -1076,19 +1107,6 @@
         return;
       }
 
-      if (!this.currentCoords && this.selectedEventId) {
-        const evt = this.eventsList.find(e => e.id === this.selectedEventId);
-        if (evt) {
-          this.currentCoords = {
-            latitude: evt.latitude + 0.00010,
-            longitude: evt.longitude + 0.00008,
-            accuracy: 5,
-            label: `Venue: ${evt.venue_name} (~14m away)`
-          };
-          this.updateGpsUI(this.currentCoords);
-        }
-      }
-
       if (!this.currentCoords) {
         if (navigator.geolocation) {
           try {
@@ -1096,7 +1114,7 @@
             const pos = await new Promise((resolve, reject) => {
               navigator.geolocation.getCurrentPosition(resolve, reject, {
                 enableHighAccuracy: true,
-                timeout: 6000
+                timeout: 8000
               });
             });
             this.currentCoords = {
@@ -1107,12 +1125,14 @@
             };
             this.updateGpsUI(this.currentCoords);
           } catch (e) {
-            console.warn('Real GPS fallback to preset:', e.message);
-            this.applyGpsPreset('inside');
+            console.warn('Could not acquire device GPS:', e.message);
           }
-        } else {
-          this.applyGpsPreset('inside');
         }
+      }
+
+      if (!this.currentCoords) {
+        window.App?.showToast('GPS Location Required: Please allow browser location access or select a GPS preset to verify attendance.', 'warning');
+        return;
       }
 
       this.saveProfile();
