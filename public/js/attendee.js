@@ -1619,11 +1619,23 @@
       const failBox = document.getElementById('passFailureBox');
       failBox.classList.remove('hidden');
 
-      document.getElementById('failReasonTitle').textContent = data.status === 'OUT_OF_BOUNDS' ? 'Geofence Boundary Violation' : 'Check-in Rejected';
-      document.getElementById('failReasonDesc').textContent = data.message || data.error || 'You are outside the permitted venue radius.';
+      if (data.status === 'OUT_OF_BOUNDS') {
+        document.getElementById('failReasonTitle').textContent = 'Geofence Boundary Violation';
+      } else if (data.status === 'FLAGGED') {
+        document.getElementById('failReasonTitle').textContent = 'Identity / Whitelist Security Breach';
+      } else {
+        document.getElementById('failReasonTitle').textContent = 'Check-in Rejected';
+      }
+      document.getElementById('failReasonDesc').textContent = data.message || data.error || 'You are not authorized for this event.';
       
       if (data.distance_meters !== undefined) {
-        document.getElementById('failDistanceMetrics').textContent = `Your Distance: ${data.distance_meters}m • Allowed Boundary: ${data.radius_meters}m (Breach by ${data.breach_meters}m)`;
+        if (data.status === 'FLAGGED') {
+          document.getElementById('failDistanceMetrics').textContent = data.is_within_geofence
+            ? `Your Distance: ${data.distance_meters}m (Within venue boundary) • Unauthorized Identity`
+            : `Your Distance: ${data.distance_meters}m (Breach by ${data.breach_meters}m) • Unauthorized Identity`;
+        } else {
+          document.getElementById('failDistanceMetrics').textContent = `Your Distance: ${data.distance_meters}m • Allowed Boundary: ${data.radius_meters}m (Breach by ${data.breach_meters}m)`;
+        }
       } else {
         document.getElementById('failDistanceMetrics').textContent = '';
       }

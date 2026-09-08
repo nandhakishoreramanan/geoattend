@@ -432,6 +432,8 @@
       if (statVerified) statVerified.textContent = '0';
       const statOutOfBounds = document.getElementById('statOutOfBounds');
       if (statOutOfBounds) statOutOfBounds.textContent = '0';
+      const statOutOfBoundsCount = document.getElementById('statOutOfBoundsCount');
+      if (statOutOfBoundsCount) statOutOfBoundsCount.textContent = '0';
       const statAvg = document.getElementById('statAvgDistance');
       if (statAvg) statAvg.textContent = '0m';
 
@@ -593,7 +595,11 @@
       const m = stats.metrics;
       document.getElementById('statTotalCheckins').textContent = m.total;
       document.getElementById('statVerifiedCount').textContent = m.verified;
-      document.getElementById('statOutOfBoundsCount').textContent = m.outOfBounds;
+      const totalBreaches = m.breaches !== undefined ? m.breaches : (m.outOfBounds + (m.flagged || 0));
+      const elBreachCount = document.getElementById('statOutOfBoundsCount');
+      if (elBreachCount) elBreachCount.textContent = totalBreaches;
+      const elBreach = document.getElementById('statOutOfBounds');
+      if (elBreach) elBreach.textContent = totalBreaches;
       document.getElementById('statPassRate').textContent = `${m.passRate}%`;
       document.getElementById('statAvgDistance').textContent = `${m.avgDistance}m`;
 
@@ -628,7 +634,10 @@
       const filter = this.currentFilter || 'ALL';
 
       const filtered = this.attendees.filter(a => {
-        const matchesFilter = filter === 'ALL' || a.status === filter;
+        const matchesFilter = filter === 'ALL'
+          || a.status === filter
+          || (filter === 'OUT_OF_BOUNDS' && (a.status === 'OUT_OF_BOUNDS' || a.status === 'FLAGGED'))
+          || (filter === 'BREACH' && (a.status === 'OUT_OF_BOUNDS' || a.status === 'FLAGGED'));
         const matchesSearch = !searchTerm ||
           a.name.toLowerCase().includes(searchTerm) ||
           a.student_id.toLowerCase().includes(searchTerm) ||

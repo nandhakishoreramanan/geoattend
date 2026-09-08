@@ -404,6 +404,7 @@ async function runTests() {
       authorization: `Bearer ${unauthorizedUserToken}`
     });
     assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.body.status, 'FLAGGED');
     assert.ok(res.body.error.includes('Access Denied'));
   });
 
@@ -432,9 +433,11 @@ async function runTests() {
   await test('GET /api/events/:id/stats aggregates live metrics', async () => {
     const res = await simulateRequest('GET', `/api/events/${createdEventId}/stats`);
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body.metrics.total, 3);
+    assert.strictEqual(res.body.metrics.total, 4);
     assert.strictEqual(res.body.metrics.verified, 2);
     assert.strictEqual(res.body.metrics.outOfBounds, 1);
+    assert.strictEqual(res.body.metrics.flagged, 1);
+    assert.strictEqual(res.body.metrics.breaches, 2);
   });
 
   await test('GET /api/events/:id/ai-insights returns AI analytics & forecast', async () => {

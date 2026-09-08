@@ -165,6 +165,15 @@ async function generateAttendanceInsights(event, attendees, metrics = {}) {
     }
   }
 
+  const flagged = attendees.filter(a => a.status === 'FLAGGED').length;
+  if (flagged > 0) {
+    anomalies.push({
+      severity: 'HIGH',
+      type: 'IDENTITY_WHITELIST_BREACH',
+      message: `${flagged} security breach attempt(s) detected: unauthorized Google identity or unwhitelisted email intercepted.`
+    });
+  }
+
   // Punctuality Analysis
   const onTimeAttendees = attendees.filter(a => {
     const t = new Date(a.checkin_time).getTime();

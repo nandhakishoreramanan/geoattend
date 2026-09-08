@@ -453,6 +453,7 @@ function getEventStats(eventId) {
   const outOfBounds = attendees.filter(a => a.status === 'OUT_OF_BOUNDS').length;
   const late = attendees.filter(a => a.status === 'LATE').length;
   const flagged = attendees.filter(a => a.status === 'FLAGGED').length;
+  const breaches = outOfBounds + flagged;
 
   const passRate = total > 0 ? Math.round((verified / total) * 100) : 0;
 
@@ -498,6 +499,7 @@ function getEventStats(eventId) {
       outOfBounds,
       late,
       flagged,
+      breaches,
       passRate,
       avgDistance,
       minDistance,

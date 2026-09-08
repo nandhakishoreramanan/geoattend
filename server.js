@@ -845,9 +845,68 @@ async function handleRequest(req, res) {
           });
         }
         if (!db.isEmailWhitelisted(event.id, attendeeEmail)) {
+          const attendeeLat = parseFloat(latitude);
+          const attendeeLng = parseFloat(longitude);
+          const validGeo = !isNaN(attendeeLat) && !isNaN(attendeeLng);
+          const geoResult = validGeo ? verifyGeofence(
+            attendeeLat,
+            attendeeLng,
+            event.latitude,
+            event.longitude,
+            event.radius_meters
+          ) : { isWithin: false, distanceMeters: 0, breachMeters: 0 };
+
+          const breachNotes = `Access Denied: Your verified Google email (${attendeeEmail}) is not authorized for this event. Whitelist breach.`;
+          const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+          const existingAttendee = db.findAttendee(event.id, student_id.trim());
+          let attendeeRecord;
+
+          if (existingAttendee) {
+            attendeeRecord = db.updateAttendee(existingAttendee.id, {
+              status: 'FLAGGED',
+              notes: breachNotes
+            });
+          } else {
+            const checkinId = 'att_' + crypto.randomBytes(6).toString('hex');
+            attendeeRecord = db.addAttendee({
+              id: checkinId,
+              event_id: event.id,
+              user_id: authUser ? authUser.id : null,
+              name: name.trim(),
+              student_id: student_id.trim(),
+              email: attendeeEmail,
+              checkin_time: now.toISOString(),
+              latitude: validGeo ? attendeeLat : 0,
+              longitude: validGeo ? attendeeLng : 0,
+              distance_meters: geoResult.distanceMeters,
+              status: 'FLAGGED',
+              device_fingerprint: device_fingerprint || '',
+              ip_address: ip,
+              notes: breachNotes
+            });
+          }
+
+          const updatedStats = db.getEventStats(event.id);
+          broadcastToEvent(event.id, 'new_checkin', {
+            attendee: attendeeRecord,
+            stats: updatedStats
+          });
+
+          db.logAudit(
+            event.id,
+            'SECURITY_BREACH',
+            `Unauthorized Google email attempt (${attendeeEmail}) for student ${student_id.trim()} (${name.trim()})`
+          );
+
           return sendJson(res, 403, {
             success: false,
-            error: `Access Denied: Your verified Google email (${attendeeEmail}) is not authorized for this event. Only organizer-whitelisted attendees can enter.`
+            status: 'FLAGGED',
+            error: breachNotes,
+            attendee: attendeeRecord,
+            distance_meters: geoResult.distanceMeters,
+            radius_meters: event.radius_meters,
+            breach_meters: geoResult.breachMeters,
+            is_within_geofence: geoResult.isWithin
           });
         }
       }
@@ -871,9 +930,68 @@ async function handleRequest(req, res) {
         const passParts = checkToken.split(':');
         const passEmail = decodeURIComponent(passParts[2] || '').toLowerCase();
         if (passEmail && attendeeEmail && passEmail !== attendeeEmail) {
+          const attendeeLat = parseFloat(latitude);
+          const attendeeLng = parseFloat(longitude);
+          const validGeo = !isNaN(attendeeLat) && !isNaN(attendeeLng);
+          const geoResult = validGeo ? verifyGeofence(
+            attendeeLat,
+            attendeeLng,
+            event.latitude,
+            event.longitude,
+            event.radius_meters
+          ) : { isWithin: false, distanceMeters: 0, breachMeters: 0 };
+
+          const breachNotes = `Security Violation: This personal pass belongs to ${passEmail}, not ${attendeeEmail}. Pass hijack breach.`;
+          const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+          const existingAttendee = db.findAttendee(event.id, student_id.trim());
+          let attendeeRecord;
+
+          if (existingAttendee) {
+            attendeeRecord = db.updateAttendee(existingAttendee.id, {
+              status: 'FLAGGED',
+              notes: breachNotes
+            });
+          } else {
+            const checkinId = 'att_' + crypto.randomBytes(6).toString('hex');
+            attendeeRecord = db.addAttendee({
+              id: checkinId,
+              event_id: event.id,
+              user_id: authUser ? authUser.id : null,
+              name: name.trim(),
+              student_id: student_id.trim(),
+              email: attendeeEmail,
+              checkin_time: now.toISOString(),
+              latitude: validGeo ? attendeeLat : 0,
+              longitude: validGeo ? attendeeLng : 0,
+              distance_meters: geoResult.distanceMeters,
+              status: 'FLAGGED',
+              device_fingerprint: device_fingerprint || '',
+              ip_address: ip,
+              notes: breachNotes
+            });
+          }
+
+          const updatedStats = db.getEventStats(event.id);
+          broadcastToEvent(event.id, 'new_checkin', {
+            attendee: attendeeRecord,
+            stats: updatedStats
+          });
+
+          db.logAudit(
+            event.id,
+            'SECURITY_BREACH',
+            `Pass hijacking attempt: pass issued for ${passEmail}, attempted by ${attendeeEmail}`
+          );
+
           return sendJson(res, 403, {
             success: false,
-            error: `Security Violation: This personal pass belongs to ${passEmail}, not ${attendeeEmail}.`
+            status: 'FLAGGED',
+            error: breachNotes,
+            attendee: attendeeRecord,
+            distance_meters: geoResult.distanceMeters,
+            radius_meters: event.radius_meters,
+            breach_meters: geoResult.breachMeters,
+            is_within_geofence: geoResult.isWithin
           });
         }
         checkToken = passParts.slice(3).join(':');
