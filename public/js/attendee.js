@@ -25,6 +25,7 @@
       this.bindEvents();
       this.initScanner();
       await this.loadUpcomingEvents();
+      await this.loadRecommendations();
       await this.checkAuthStatus();
       if (window.App && window.App.currentUser) {
         this.onUserAuthChanged(window.App.currentUser);
@@ -57,6 +58,7 @@
         if (badge) badge.innerHTML = '';
       }
       this.refreshPassCard();
+      this.loadRecommendations();
     },
 
     async checkAuthStatus() {
@@ -318,56 +320,120 @@
       const container = document.getElementById('upcomingEventsGrid');
       if (!container) return;
 
+      const countBadge = document.getElementById('eventsCountBadge');
+      if (countBadge) {
+        countBadge.textContent = `${events.length} session${events.length === 1 ? '' : 's'} available`;
+      }
+
       if (events.length === 0) {
         container.innerHTML = `
-          <div class="col-span-full py-12 px-4 text-center rounded-2xl bg-slate-50 border border-slate-200">
-            <p class="text-sm font-bold text-slate-800">No campus events scheduled yet</p>
-            <p class="text-xs text-slate-500 mt-1 font-medium">Events created in the Organizer portal will appear here automatically.</p>
+          <div class="col-span-full py-12 px-4 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
+            <p class="text-sm font-bold text-slate-800 dark:text-slate-200">No campus events match criteria</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Try another search prompt or create a new event in the Organizer portal.</p>
           </div>
         `;
         return;
       }
 
       container.innerHTML = '';
+      const categoryIconMap = {
+        'Tech / AI': '💻 Tech / AI',
+        'Hackathon': '⚡ Hackathon',
+        'Workshop': '🛠️ Workshop',
+        'Seminar': '🎓 Seminar',
+        'Cultural': '🎨 Cultural'
+      };
+
       events.forEach(evt => {
         const card = document.createElement('div');
         const isSelected = this.selectedEventId === evt.id;
-        card.className = `p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+        card.className = `p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3.5 ${
           isSelected
             ? 'bg-slate-950 text-white border-slate-950 shadow-xl ring-2 ring-slate-950'
-            : 'bg-white border-slate-200/90 hover:border-slate-400 hover:shadow-md text-slate-900 shadow-sm'
+            : 'bg-white dark:bg-[#111726] border-slate-200/90 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 hover:shadow-md text-slate-900 dark:text-white shadow-sm'
         }`;
 
-        const startDate = new Date(evt.start_time);
-        const dateStr = startDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let dateStr = 'TBD';
+        let timeStr = 'TBD';
+        if (evt.start_time) {
+          const startDate = new Date(evt.start_time);
+          if (!isNaN(startDate.getTime())) {
+            dateStr = startDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+            const startTimeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (evt.end_time) {
+              const endDate = new Date(evt.end_time);
+              if (!isNaN(endDate.getTime())) {
+                const endTimeStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                timeStr = `${startTimeStr} – ${endTimeStr}`;
+              } else {
+                timeStr = startTimeStr;
+              }
+            } else {
+              timeStr = startTimeStr;
+            }
+          }
+        }
+
+        const categoryLabel = categoryIconMap[evt.category] || evt.category || '💻 Tech / AI';
+        const whitelistBadge = evt.require_whitelist
+          ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${isSelected ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'}">🔒 Whitelisted</span>`
+          : `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${isSelected ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'}">🌐 Open Entry</span>`;
 
         card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full ${
+          <div class="space-y-2.5">
+            <!-- Badges Row: Category, Whitelist, Code -->
+            <div class="flex items-center justify-between gap-1.5 flex-wrap">
+              <span class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full ${
                 isSelected
-                  ? 'bg-white/10 text-white border border-white/20'
-                  : 'bg-slate-100 text-slate-800 border border-slate-200'
+                  ? 'bg-white/15 text-white border border-white/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
               }">
-                ${evt.static_code}
+                ${categoryLabel}
               </span>
-              <span class="text-[11px] font-mono ${isSelected ? 'text-slate-400' : 'text-slate-500'} font-medium">${dateStr}, ${timeStr}</span>
+              <div class="flex items-center gap-1">
+                ${whitelistBadge}
+                <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                  isSelected ? 'text-slate-400' : 'text-slate-500'
+                }">${evt.static_code || ''}</span>
+              </div>
             </div>
-            <h3 class="font-bold text-sm line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-950'}">${evt.title}</h3>
-            <p class="text-xs mt-0.5 flex items-center gap-1 ${isSelected ? 'text-slate-300' : 'text-slate-500'}">
-              <svg class="w-3.5 h-3.5 flex-shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              </svg>
-              <span class="truncate">${evt.venue_name}</span>
-            </p>
+
+            <!-- Title & Venue -->
+            <div>
+              <h3 class="font-black text-sm sm:text-base leading-snug line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-950 dark:text-white'}">${evt.title}</h3>
+              <p class="text-xs mt-1 flex items-center gap-1.5 ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}">
+                <svg class="w-3.5 h-3.5 flex-shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                </svg>
+                <span class="truncate font-medium">${evt.venue_name}</span>
+              </p>
+            </div>
+
+            <!-- Date & Time Row -->
+            <div class="p-2 rounded-xl text-xs flex items-center gap-2 ${
+              isSelected ? 'bg-white/10 text-slate-200' : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800'
+            }">
+              <span class="text-sm">🗓️</span>
+              <div class="leading-tight">
+                <div class="font-bold">${dateStr}</div>
+                <div class="text-[11px] font-mono ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}">${timeStr}</div>
+              </div>
+            </div>
+
+            <!-- Description if available -->
+            ${evt.description ? `<p class="text-[11px] line-clamp-2 ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'} font-normal">${evt.description}</p>` : ''}
           </div>
-          <div class="flex items-center justify-between pt-3 border-t ${isSelected ? 'border-slate-800' : 'border-slate-100'} text-xs">
-            <span class="text-[11px] ${isSelected ? 'text-slate-400' : 'text-slate-500'}">Radius: <b class="${isSelected ? 'text-white' : 'text-slate-900'}">${evt.radius_meters}m</b></span>
+
+          <!-- Bottom Footer: Radius, Dynamic QR & Selection Button -->
+          <div class="flex items-center justify-between pt-3 border-t ${isSelected ? 'border-slate-800' : 'border-slate-100 dark:border-slate-800'} text-xs">
+            <div class="text-[11px] leading-tight ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}">
+              <span>Radius: <b class="${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'} font-mono">${evt.radius_meters}m</b></span>
+              <span class="block text-[10px] opacity-75">${evt.dynamic_qr ? '🔄 Dynamic QR' : '📌 Static QR'}</span>
+            </div>
             <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
               isSelected
-                ? 'btn-sunset text-slate-950 font-black'
-                : 'bg-slate-950 hover:bg-slate-800 text-white shadow-sm'
+                ? 'btn-sunset text-slate-950 font-black shadow-md'
+                : 'bg-slate-950 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-950 shadow-sm'
             }">
               ${isSelected ? '✓ Selected' : 'Select Event'}
             </button>
@@ -377,6 +443,131 @@
         card.addEventListener('click', () => this.selectEvent(evt, true));
         container.appendChild(card);
       });
+    },
+
+    async loadRecommendations() {
+      const grid = document.getElementById('aiRecommendationsGrid');
+      if (!grid) return;
+
+      const user = window.App?.currentUser || this.currentUser;
+      const email = user?.email || localStorage.getItem('geoattend_email') || 'student@srmist.edu.in';
+
+      try {
+        const res = await fetch('/api/ai/recommendations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, history_limit: 10 })
+        });
+        const data = await res.json();
+        const recs = data.recommendations || [];
+
+        if (recs.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full py-4 px-3 text-center text-xs text-amber-800 dark:text-amber-300 font-medium">
+              No upcoming events available for recommendations. Check back once new events are scheduled!
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = '';
+        recs.forEach(rec => {
+          const card = document.createElement('div');
+          card.className = 'p-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-amber-200/90 dark:border-amber-900/50 shadow-sm flex flex-col justify-between gap-2.5 transition-all hover:shadow-md hover:border-amber-400';
+
+          const scoreColor = rec.match_score >= 90
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+            : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-700';
+
+          card.innerHTML = `
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${scoreColor} border">
+                  ⭐ ${rec.match_score}% Match
+                </span>
+                <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">${rec.category || 'Tech'}</span>
+              </div>
+              <h4 class="font-black text-xs text-slate-900 dark:text-white line-clamp-1">${rec.title}</h4>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+                <span>📍</span>
+                <span>${rec.venue_name}</span>
+              </p>
+              <p class="text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-2 pt-0.5 leading-snug">
+                "${rec.rationale || 'Recommended based on your attendance profile.'}"
+              </p>
+            </div>
+            <button type="button" class="btn-rec-select w-full py-1.5 px-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1" data-event-id="${rec.event_id}">
+              <span>Check in Pass</span>
+              <span>→</span>
+            </button>
+          `;
+
+          const btnSelect = card.querySelector('.btn-rec-select');
+          if (btnSelect) {
+            btnSelect.addEventListener('click', () => {
+              const matchedEvt = (this.eventsList || []).find(e => e.id === rec.event_id);
+              if (matchedEvt) {
+                this.selectEvent(matchedEvt, true);
+                window.App?.showToast(`Selected recommended event: ${matchedEvt.title}`, 'success');
+              }
+            });
+          }
+
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        console.error('Recommendations Error:', err);
+      }
+    },
+
+    async handleSemanticSearch(query) {
+      const q = (query || '').trim();
+      const feedbackBanner = document.getElementById('aiSearchFeedbackBanner');
+      const feedbackText = document.getElementById('aiSearchExplanationText');
+      const clearBtn = document.getElementById('btnClearAiSearch');
+
+      if (!q) {
+        if (feedbackBanner) feedbackBanner.classList.add('hidden');
+        if (clearBtn) clearBtn.classList.add('hidden');
+        this.renderUpcomingEvents(this.eventsList);
+        return;
+      }
+
+      if (clearBtn) clearBtn.classList.remove('hidden');
+
+      try {
+        if (feedbackBanner && feedbackText) {
+          feedbackBanner.classList.remove('hidden');
+          feedbackText.textContent = `Analyzing query "${q}" with Local Qwen AI...`;
+        }
+
+        const res = await fetch('/api/ai/search-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q })
+        });
+        const data = await res.json();
+        const matches = data.matches || [];
+
+        if (feedbackBanner && feedbackText) {
+          const modelInfo = data.engine === 'ollama' ? `Qwen (${data.model})` : 'Smart Engine';
+          feedbackText.innerHTML = `<b>${modelInfo}:</b> ${data.explanation || `Found ${matches.length} matching event(s).`}`;
+        }
+
+        this.renderUpcomingEvents(matches);
+      } catch (err) {
+        console.error('Semantic search error:', err);
+        const fallback = (this.eventsList || []).filter(e =>
+          (e.title && e.title.toLowerCase().includes(q.toLowerCase())) ||
+          (e.venue_name && e.venue_name.toLowerCase().includes(q.toLowerCase())) ||
+          (e.category && e.category.toLowerCase().includes(q.toLowerCase()))
+        );
+        if (feedbackBanner && feedbackText) {
+          feedbackBanner.classList.remove('hidden');
+          feedbackText.textContent = `Showing ${fallback.length} matching event(s) for "${q}".`;
+        }
+        this.renderUpcomingEvents(fallback);
+      }
     },
 
     async selectEvent(evt, showToast = true) {
@@ -416,7 +607,7 @@
     },
 
     bindEvents() {
-      // Instant Event Search
+      // Instant Event Search (Simple Client-Side Filter)
       const searchInput = document.getElementById('eventSearchInput');
       if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -431,6 +622,80 @@
             (evt.description && evt.description.toLowerCase().includes(q))
           );
           this.renderUpcomingEvents(filtered);
+        });
+      }
+
+      // Natural-Language AI Event Search (Local Qwen Semantic Understanding)
+      const aiSearchInput = document.getElementById('aiEventSearchInput');
+      const btnClearAiSearch = document.getElementById('btnClearAiSearch');
+      const btnResetAiSearch = document.getElementById('btnResetAiSearch');
+      let aiSearchDebounceTimer = null;
+
+      if (aiSearchInput) {
+        aiSearchInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(aiSearchDebounceTimer);
+            this.handleSemanticSearch(aiSearchInput.value);
+          }
+        });
+
+        aiSearchInput.addEventListener('input', (e) => {
+          clearTimeout(aiSearchDebounceTimer);
+          const val = e.target.value.trim();
+          if (!val) {
+            this.handleSemanticSearch('');
+            return;
+          }
+          aiSearchDebounceTimer = setTimeout(() => {
+            this.handleSemanticSearch(val);
+          }, 400);
+        });
+      }
+
+      if (btnClearAiSearch) {
+        btnClearAiSearch.addEventListener('click', () => {
+          if (aiSearchInput) aiSearchInput.value = '';
+          this.handleSemanticSearch('');
+        });
+      }
+
+      if (btnResetAiSearch) {
+        btnResetAiSearch.addEventListener('click', () => {
+          if (aiSearchInput) aiSearchInput.value = '';
+          this.handleSemanticSearch('');
+        });
+      }
+
+      // Preset AI Search Prompt Chips
+      document.querySelectorAll('.ai-search-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const prompt = chip.textContent.trim();
+          if (aiSearchInput) {
+            aiSearchInput.value = prompt;
+            this.handleSemanticSearch(prompt);
+          }
+        });
+      });
+
+      // Refresh Upcoming Events Button
+      const btnRefreshUpcoming = document.getElementById('btnRefreshUpcomingEvents');
+      if (btnRefreshUpcoming) {
+        btnRefreshUpcoming.addEventListener('click', async () => {
+          btnRefreshUpcoming.disabled = true;
+          await this.loadUpcomingEvents();
+          await this.loadRecommendations();
+          window.App?.showToast('Refreshed upcoming events and recommendations', 'info');
+          btnRefreshUpcoming.disabled = false;
+        });
+      }
+
+      // Refresh Personalized Recommendations Button
+      const btnRefreshRecs = document.getElementById('btnRefreshRecommendations');
+      if (btnRefreshRecs) {
+        btnRefreshRecs.addEventListener('click', async () => {
+          await this.loadRecommendations();
+          window.App?.showToast('Refreshed AI event recommendations', 'success');
         });
       }
 

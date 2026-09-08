@@ -660,8 +660,12 @@
       const chatForm = document.getElementById('aiChatForm');
       const chatInput = document.getElementById('aiChatInput');
 
+      const btnOpenAttendee = document.getElementById('btnOpenAttendeeAiChat');
       if (btnOpen) {
         btnOpen.addEventListener('click', () => this.openLocalAiModal());
+      }
+      if (btnOpenAttendee) {
+        btnOpenAttendee.addEventListener('click', () => this.openLocalAiModal());
       }
 
       if (btnClose && modal) {
@@ -721,6 +725,18 @@
           }
         });
       }
+
+      // Model preset quick switch chips
+      document.querySelectorAll('.btn-model-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const modelName = btn.getAttribute('data-model');
+          const inputModel = document.getElementById('aiConfigModel');
+          if (inputModel && modelName) {
+            inputModel.value = modelName;
+            btnSaveConfig?.click();
+          }
+        });
+      });
 
       // Fetch AI narrative
       if (btnNarrative) {

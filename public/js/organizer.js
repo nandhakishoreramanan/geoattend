@@ -156,6 +156,10 @@
       if (btnNewEvent && modal) {
         btnNewEvent.addEventListener('click', () => {
           modal.classList.remove('hidden');
+          const dateInput = document.getElementById('newEventDate');
+          if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+          }
           this.initCreateEventMap();
         });
       }
@@ -918,6 +922,10 @@
       e.preventDefault();
       const title = document.getElementById('newEventTitle').value.trim();
       const venue = document.getElementById('newEventVenue').value.trim();
+      const category = document.getElementById('newEventCategory')?.value || 'Tech / AI';
+      const eventDate = document.getElementById('newEventDate')?.value || '';
+      const startTime = document.getElementById('newEventStartTime')?.value || '';
+      const endTime = document.getElementById('newEventEndTime')?.value || '';
       const desc = document.getElementById('newEventDesc').value.trim();
       const lat = parseFloat(document.getElementById('newEventLat').value);
       const lng = parseFloat(document.getElementById('newEventLng').value);
@@ -939,6 +947,10 @@
             title,
             venue_name: venue,
             description: desc,
+            category,
+            event_date: eventDate,
+            start_time: startTime,
+            end_time: endTime,
             latitude: lat,
             longitude: lng,
             radius_meters: radius,

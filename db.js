@@ -51,6 +51,7 @@ function initSchema() {
       end_time TEXT NOT NULL,
       is_active INTEGER NOT NULL DEFAULT 1,
       dynamic_qr INTEGER NOT NULL DEFAULT 1,
+      category TEXT DEFAULT 'Tech / AI',
       allowed_emails TEXT DEFAULT '',
       require_whitelist INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -95,6 +96,7 @@ function initSchema() {
   try { db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT;"); } catch (e) {}
   try { db.exec("ALTER TABLE events ADD COLUMN allowed_emails TEXT DEFAULT '';"); } catch (e) {}
   try { db.exec("ALTER TABLE events ADD COLUMN require_whitelist INTEGER NOT NULL DEFAULT 0;"); } catch (e) {}
+  try { db.exec("ALTER TABLE events ADD COLUMN category TEXT DEFAULT 'Tech / AI';"); } catch (e) {}
 }
 
 initSchema();
@@ -241,11 +243,11 @@ function createEvent(eventData) {
     INSERT INTO events (
       id, organizer_id, title, description, venue_name, static_code, secret_key,
       latitude, longitude, radius_meters, start_time, end_time,
-      is_active, dynamic_qr, allowed_emails, require_whitelist, created_at
+      is_active, dynamic_qr, category, allowed_emails, require_whitelist, created_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?
     )
   `);
 
@@ -271,6 +273,7 @@ function createEvent(eventData) {
     eventData.end_time,
     eventData.is_active !== undefined ? (eventData.is_active ? 1 : 0) : 1,
     eventData.dynamic_qr !== undefined ? (eventData.dynamic_qr ? 1 : 0) : 1,
+    eventData.category || 'Tech / AI',
     allowedEmailsStr,
     eventData.require_whitelist !== undefined ? (eventData.require_whitelist ? 1 : 0) : (allowedEmailsStr.length > 0 ? 1 : 0),
     eventData.created_at || new Date().toISOString()
@@ -293,6 +296,7 @@ function updateEvent(id, updates) {
   const end_time = updates.end_time !== undefined ? updates.end_time : existing.end_time;
   const is_active = updates.is_active !== undefined ? (updates.is_active ? 1 : 0) : existing.is_active;
   const dynamic_qr = updates.dynamic_qr !== undefined ? (updates.dynamic_qr ? 1 : 0) : existing.dynamic_qr;
+  const category = updates.category !== undefined ? updates.category : (existing.category || 'Tech / AI');
   const allowed_emails = updates.allowed_emails !== undefined
     ? (Array.isArray(updates.allowed_emails) ? updates.allowed_emails.map(e => e.trim().toLowerCase()).filter(Boolean).join(',') : String(updates.allowed_emails).trim())
     : (existing.allowed_emails || '');
@@ -303,13 +307,13 @@ function updateEvent(id, updates) {
       title = ?, description = ?, venue_name = ?,
       latitude = ?, longitude = ?, radius_meters = ?,
       start_time = ?, end_time = ?, is_active = ?, dynamic_qr = ?,
-      allowed_emails = ?, require_whitelist = ?
+      category = ?, allowed_emails = ?, require_whitelist = ?
     WHERE id = ?
   `).run(
     title, description, venue_name,
     latitude, longitude, radius_meters,
     start_time, end_time, is_active, dynamic_qr,
-    allowed_emails, require_whitelist,
+    category, allowed_emails, require_whitelist,
     id
   );
 
@@ -544,6 +548,33 @@ function seedDemoData() {
   }
 }
 
+function getAttendeeHistoryByEmail(email) {
+  if (!email) return [];
+  const query = `
+    SELECT 
+      a.id AS attendee_id,
+      a.checkin_time,
+      a.status,
+      a.distance_meters,
+      e.id,
+      e.title,
+      e.venue_name,
+      e.category,
+      e.start_time,
+      e.end_time,
+      e.radius_meters
+    FROM attendees a
+    JOIN events e ON a.event_id = e.id
+    WHERE LOWER(a.email) = LOWER(?)
+    ORDER BY a.checkin_time DESC
+  `;
+  try {
+    return db.prepare(query).all(email);
+  } catch (e) {
+    return [];
+  }
+}
+
 seedDemoData();
 
 module.exports = {
@@ -568,6 +599,7 @@ module.exports = {
   addAttendee,
   updateAttendee,
   getEventStats,
+  getAttendeeHistoryByEmail,
   logAudit,
   seedDemoData
 };

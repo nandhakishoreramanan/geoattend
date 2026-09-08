@@ -476,6 +476,46 @@ async function runTests() {
     assert.ok(res.body.ai_provider);
   });
 
+  await test('POST /api/ai/search-events searches events semantically', async () => {
+    const res = await simulateRequest('POST', '/api/ai/search-events', {
+      query: 'AI symposium auditorium'
+    });
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.success, true);
+    assert.ok(Array.isArray(res.body.matches));
+    assert.ok(typeof res.body.explanation === 'string');
+    assert.ok(res.body.ai_provider);
+  });
+
+  await test('POST /api/ai/recommendations generates personalized recommendations for attendees', async () => {
+    const res = await simulateRequest('POST', '/api/ai/recommendations', {
+      email: 'student@srmist.edu.in'
+    });
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.success, true);
+    assert.ok(Array.isArray(res.body.recommendations));
+    assert.ok(res.body.ai_provider);
+  });
+
+  await test('POST /api/events creates an event with category and formatted schedule date/time', async () => {
+    const res = await simulateRequest('POST', '/api/events', {
+      title: 'SRM Robotics & AI Summit 2026',
+      venue_name: 'TP Ganesan Main Hall',
+      category: 'Hackathon',
+      event_date: '2026-09-20',
+      start_time: '10:00',
+      end_time: '18:00',
+      latitude: 12.82315,
+      longitude: 80.04420,
+      radius_meters: 120
+    });
+    assert.strictEqual(res.status, 201);
+    assert.strictEqual(res.body.event.category, 'Hackathon');
+    assert.ok(res.body.event.start_time.includes('2026-09-20'));
+    assert.strictEqual(res.body.event.radius_meters, 120);
+    db.deleteEvent(res.body.event.id);
+  });
+
   await test('GET /api/events/:id/export/csv exports required columns (Name, Registration ID, Email, Timestamp)', async () => {
     const res = await simulateRequest('GET', `/api/events/${createdEventId}/export/csv`);
     assert.strictEqual(res.status, 200);

@@ -982,32 +982,88 @@
     </div>
 
     <!-- CATALOG ROW: Upcoming Campus Events Catalog (Full Width) -->
-    <div class="bento-card p-7 sm:p-8 space-y-5">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="bento-card p-6 sm:p-8 space-y-5">
+      <!-- Catalog Header & Search Row -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 class="text-xl font-display font-black text-slate-950 flex items-center gap-2">
-            <span>Upcoming Campus Events</span>
-            <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-800 border border-slate-200">Live Catalog</span>
-            <button id="btnRefreshUpcomingEvents" type="button" title="Refresh upcoming events" class="ml-1 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold border border-slate-300 flex items-center gap-1 transition-all cursor-pointer">
-              <svg class="w-3 h-3 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-xl font-display font-black text-slate-950 dark:text-white flex items-center gap-2">
+              <span>Upcoming Campus Events</span>
+            </h2>
+            <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">Live Catalog</span>
+            <button id="btnRefreshUpcomingEvents" type="button" title="Refresh upcoming events" class="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold border border-slate-300 dark:border-slate-700 flex items-center gap-1 transition-all cursor-pointer">
+              <svg class="w-3 h-3 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <span>Refresh</span>
             </button>
-          </h2>
-          <p class="text-xs text-slate-500 font-medium">Browse events scheduled at SRM Kattankulathur campus</p>
+            <button id="btnOpenAttendeeAiChat" type="button" title="Ask Campus AI Concierge" class="px-3 py-1 rounded-full bg-slate-950 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[11px] font-black flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+              <span>🤖</span>
+              <span>Campus AI Concierge</span>
+            </button>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Browse schedules, dates, venue perimeters, and personal entry passes at SRM IST</p>
         </div>
 
-        <!-- Event Search -->
-        <div class="relative w-full sm:w-72">
-          <input id="eventSearchInput" type="text" placeholder="Search events by title or venue..." class="w-full bg-slate-100/80 border border-slate-300/80 rounded-xl text-xs px-3.5 py-2.5 pl-8 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white placeholder-slate-400 font-medium transition-all">
-          <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
+        <!-- Natural-Language AI Search -->
+        <div class="space-y-1.5 w-full lg:w-96">
+          <div class="relative">
+            <input id="aiEventSearchInput" type="text" placeholder="✨ Ask AI: 'morning hackathon in auditorium'..." class="w-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl text-xs px-3.5 py-2.5 pl-8 pr-7 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-white focus:bg-white placeholder-slate-400 font-medium transition-all">
+            <span class="absolute left-2.5 top-2.5 text-xs">✨</span>
+            <button id="btnClearAiSearch" type="button" class="hidden absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold cursor-pointer">✕</button>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap text-[10px]">
+            <span class="font-bold text-slate-400">Try AI prompt:</span>
+            <button type="button" class="ai-search-preset-chip font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">Morning tech</button>
+            <button type="button" class="ai-search-preset-chip font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">Hackathons</button>
+            <button type="button" class="ai-search-preset-chip font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">TP Ganesan</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Search Explanation Banner -->
+      <div id="aiSearchFeedbackBanner" class="hidden p-3 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between text-xs text-blue-950 dark:text-blue-200">
+        <div class="flex items-center gap-2 font-medium">
+          <span class="text-sm">🤖</span>
+          <span id="aiSearchExplanationText">Found matching events based on your semantic query.</span>
+        </div>
+        <button id="btnResetAiSearch" type="button" class="text-[11px] font-bold text-blue-800 dark:text-blue-300 underline hover:opacity-80 cursor-pointer">Show All Events</button>
+      </div>
+
+      <!-- AI Personalized Recommendations Shelf -->
+      <div id="aiRecommendationsShelf" class="space-y-3 p-4 sm:p-5 rounded-3xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-700 dark:text-amber-300 font-bold text-base">
+              ⭐
+            </div>
+            <div>
+              <h3 class="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                <span>Personalized Event Recommendations</span>
+                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">Powered by Local Qwen</span>
+              </h3>
+              <p class="text-[11px] text-amber-800/90 dark:text-amber-400 font-medium">Curated based on your verified check-in history & academic tracks</p>
+            </div>
+          </div>
+          <button id="btnRefreshRecommendations" type="button" class="px-3 py-1 rounded-full bg-amber-200 hover:bg-amber-300 dark:bg-amber-900/70 dark:hover:bg-amber-900 text-amber-950 dark:text-amber-100 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs">
+            <span>✨</span>
+            <span>Regenerate Recommendations</span>
+          </button>
+        </div>
+        <div id="aiRecommendationsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- Populated by attendee.js -->
         </div>
       </div>
 
       <!-- Events Grid -->
-      <div id="upcomingEventsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Populated dynamically by attendee.js -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">All Scheduled Sessions</span>
+          <span id="eventsCountBadge" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Loading...</span>
+        </div>
+        <div id="upcomingEventsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Populated dynamically by attendee.js -->
+        </div>
       </div>
     </div>
 
@@ -1047,6 +1103,34 @@
         <div>
           <label for="newEventVenue" class="block text-xs font-bold text-slate-700 mb-1">Venue Name *</label>
           <input id="newEventVenue" type="text" required placeholder="e.g. TP Ganesan Auditorium" class="w-full bg-slate-100/80 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white font-medium transition-all">
+        </div>
+
+        <!-- Event Category -->
+        <div>
+          <label for="newEventCategory" class="block text-xs font-bold text-slate-700 mb-1">Category & Track</label>
+          <select id="newEventCategory" class="w-full bg-slate-100/80 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:bg-white font-medium transition-all">
+            <option value="Tech / AI">💻 Tech / AI Summit</option>
+            <option value="Hackathon">⚡ Hackathon & Innovation</option>
+            <option value="Workshop">🛠️ Hands-on Workshop & Lab</option>
+            <option value="Seminar">🎓 Academic Lecture & Seminar</option>
+            <option value="Cultural">🎨 Cultural & Fest Gathering</option>
+          </select>
+        </div>
+
+        <!-- Event Schedule: Date & Times -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label for="newEventDate" class="block text-xs font-bold text-slate-700 mb-1">Event Date *</label>
+            <input id="newEventDate" type="date" required class="w-full bg-slate-100/80 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-slate-950">
+          </div>
+          <div>
+            <label for="newEventStartTime" class="block text-xs font-bold text-slate-700 mb-1">Start Time *</label>
+            <input id="newEventStartTime" type="time" value="09:30" required class="w-full bg-slate-100/80 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-slate-950">
+          </div>
+          <div>
+            <label for="newEventEndTime" class="block text-xs font-bold text-slate-700 mb-1">End Time *</label>
+            <input id="newEventEndTime" type="time" value="12:30" required class="w-full bg-slate-100/80 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-slate-950">
+          </div>
         </div>
         
         <div>
@@ -1396,6 +1480,14 @@
                 <label for="aiConfigHost" class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Ollama Host</label>
                 <input id="aiConfigHost" type="text" value="http://127.0.0.1:11434" placeholder="http://127.0.0.1:11434" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono">
               </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">Model Presets:</span>
+              <button type="button" class="btn-model-preset text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer" data-model="qwen2.5:3b">
+                ⚡ qwen2.5:3b (Recommended 4B/3B)
+              </button>
+              <button type="button" class="btn-model-preset text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer" data-model="qwen2.5:0.5b">
+                🚀 qwen2.5:0.5b (Ultra-Fast)
+              </button>
             </div>
             <div class="flex justify-end">
               <button id="btnSaveAiConfig" type="button" class="px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold hover:opacity-90 transition-all cursor-pointer">

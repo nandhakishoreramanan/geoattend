@@ -14,7 +14,7 @@ const db = require('./db');
 const { calculateDistance, verifyGeofence } = require('./geo');
 const { generateDynamicToken, validateToken, TOKEN_WINDOW_SECONDS } = require('./qr');
 const { generateJWT, verifyJWT, verifyPassword, parseGoogleCredential } = require('./auth');
-const { generateAttendanceInsights, generateEventDescription, searchEventsNaturalLanguage, getOllamaStatus, setOllamaConfig, askEventAssistant } = require('./ai');
+const { generateAttendanceInsights, generateEventDescription, searchEventsNaturalLanguage, searchEventsSemantic, generateEventRecommendations, getOllamaStatus, setOllamaConfig, askEventAssistant } = require('./ai');
 
 // Load environment variables from .env if present
 try {
@@ -551,8 +551,16 @@ async function handleRequest(req, res) {
       const secretKey = crypto.randomBytes(16).toString('hex');
 
       const now = new Date();
-      const startTime = body.start_time || now.toISOString();
-      const endTime = body.end_time || new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
+      let startTime = body.start_time;
+      let endTime = body.end_time;
+      if (body.event_date && body.start_time && !String(body.start_time).includes('T')) {
+        startTime = new Date(`${body.event_date}T${body.start_time}:00`).toISOString();
+      }
+      if (body.event_date && body.end_time && !String(body.end_time).includes('T')) {
+        endTime = new Date(`${body.event_date}T${body.end_time}:00`).toISOString();
+      }
+      if (!startTime) startTime = now.toISOString();
+      if (!endTime) endTime = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
 
       let allowedEmailsList = (body.allowed_emails || '')
         .split(/[\n,;]+/)
@@ -585,6 +593,7 @@ async function handleRequest(req, res) {
         end_time: endTime,
         is_active: body.is_active !== undefined ? body.is_active : 1,
         dynamic_qr: body.dynamic_qr !== undefined ? body.dynamic_qr : 1,
+        category: (body.category || 'Tech / AI').trim(),
         allowed_emails: allowedEmailsStr,
         require_whitelist: requireWhitelist
       });
@@ -1026,11 +1035,15 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, { success: true, ...status });
     }
 
-    // POST /api/ai/chat - Interactive organizer Q&A powered by local Qwen
+    // POST /api/ai/chat - Interactive organizer & student Q&A powered by local Qwen
     if (pathname === '/api/ai/chat' && method === 'POST') {
       const body = await parseJsonBody(req);
       const { message, event_id } = body;
       if (!message) return sendJson(res, 400, { error: 'Message is required' });
+
+      const allEvents = db.getAllEvents();
+      const authUser = getAuthUser(req);
+      const email = (authUser ? authUser.email : '') || body.email || '';
 
       let event = null;
       let attendees = [];
@@ -1044,20 +1057,19 @@ async function handleRequest(req, res) {
         }
       }
 
-      if (!event) {
-        const allEvents = db.getAllEvents();
-        if (allEvents.length > 0) {
-          event = allEvents[0];
-          attendees = db.getAttendeesByEvent(event.id);
-          stats = db.getEventStats(event.id);
-        }
+      if (!event && allEvents.length > 0) {
+        event = allEvents[0];
+        attendees = db.getAttendeesByEvent(event.id);
+        stats = db.getEventStats(event.id);
       }
 
       const replyData = await askEventAssistant(
         message,
         event || { title: 'General Session', venue_name: 'SRM Campus', radius_meters: 80 },
         attendees,
-        stats
+        stats,
+        allEvents,
+        email
       );
       return sendJson(res, 200, replyData);
     }
@@ -1081,6 +1093,30 @@ async function handleRequest(req, res) {
       const { title, venue, category } = body;
       const result = await generateEventDescription(title || 'Campus Seminar', venue || 'SRM Auditorium', category || 'academic');
       return sendJson(res, 200, result);
+    }
+
+    // POST /api/ai/search-events - Natural-Language Semantic Event Search
+    if (pathname === '/api/ai/search-events' && method === 'POST') {
+      const body = await parseJsonBody(req);
+      const query = (body.query || body.q || '').trim();
+      const allEvents = db.getAllEvents();
+      const result = await searchEventsSemantic(query, allEvents);
+      return sendJson(res, 200, { success: true, ...result });
+    }
+
+    // POST /api/ai/recommendations - Personalized AI Event Recommendations
+    if (pathname === '/api/ai/recommendations' && method === 'POST') {
+      const body = await parseJsonBody(req);
+      const authUser = getAuthUser(req);
+      const email = (body.email || (authUser ? authUser.email : '') || '').trim().toLowerCase();
+
+      const allEvents = db.getAllEvents();
+      let history = [];
+      if (email) {
+        history = db.getAttendeeHistoryByEmail(email);
+      }
+      const result = await generateEventRecommendations(email, history, allEvents);
+      return sendJson(res, 200, { success: true, ...result });
     }
 
     // GET /api/events/:id/export/csv - Data Export (CSV)
