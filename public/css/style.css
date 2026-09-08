@@ -43,12 +43,40 @@ code, .font-mono {
   border: 1px solid var(--card-border);
   border-radius: 1.75rem;
   box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.03);
+  animation: bentoEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease;
+}
+
+@keyframes bentoEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .bento-subcard {
   background: #f8fafc;
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 1.25rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Playful floating micro-animation for doodle arrows & decorative badges */
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(2deg);
+  }
+}
+
+.animate-float {
+  animation: gentleFloat 4s ease-in-out infinite;
 }
 
 /* Backward-compatible glass aliases */
@@ -71,17 +99,17 @@ code, .font-mono {
   color: #0f172a;
   font-weight: 800;
   border-radius: 9999px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 14px 0 rgba(253, 186, 116, 0.35);
 }
 
 .btn-sunset:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px 0 rgba(253, 186, 116, 0.45);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px 0 rgba(253, 186, 116, 0.5);
 }
 
 .btn-sunset:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.97);
 }
 
 /* Circular Icon Action Button (Next to sunset pill) */
@@ -95,23 +123,48 @@ code, .font-mono {
   align-items: center;
   justify-content: center;
   color: #0f172a;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
 
 .btn-circle-action:hover {
   background: #f1f5f9;
   border-color: rgba(15, 23, 42, 0.3);
-  transform: scale(1.04);
+  transform: scale(1.08) translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.btn-circle-action:active {
+  transform: scale(0.95);
 }
 
 /* Holographic Visor Badge (Futuristic Pastel Eyewear in Reference Photo) */
+@keyframes visorShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 .visor-badge {
-  background: linear-gradient(135deg, #ffc3a0 0%, #ffafbd 40%, #7ee8fa 100%);
+  background: linear-gradient(135deg, #ffc3a0 0%, #ffafbd 35%, #c4b5fd 65%, #7ee8fa 100%);
+  background-size: 200% 200%;
+  animation: visorShimmer 8s ease infinite;
   color: #0f172a;
   font-weight: 800;
   border-radius: 9999px;
   box-shadow: 0 4px 15px -2px rgba(255, 175, 189, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.visor-badge:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 18px -2px rgba(255, 175, 189, 0.6);
 }
 
 /* Geometric Wireframe Grid (3D Arc Pattern in Reference Photo) */
@@ -511,4 +564,33 @@ html.dark #upcomingEventsGrid > div.ring-2 {
   background-color: #090d16 !important;
   border-color: #60a5fa !important;
 }
+
+/* Modal Pop Entrance Animation */
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+#createEventModal:not(.hidden) > div,
+#googleAuthModal:not(.hidden) > div,
+#manageWhitelistModal:not(.hidden) > div {
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth Theme Switching Transitions */
+body,
+header,
+aside,
+main,
+.bento-card,
+.bento-subcard {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
 

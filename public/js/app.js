@@ -15,6 +15,7 @@
       this.loadStoredAuth();
       this.bindNav();
       this.bindGoogleAuth();
+      this.bindNavDrawer();
 
       // Initialize sub-controllers
       if (global.Organizer) global.Organizer.init();
@@ -92,6 +93,178 @@
       }
     },
 
+    bindNavDrawer() {
+      const btnHamburger = document.getElementById('btnHamburgerMenu');
+      const btnCloseDrawer = document.getElementById('btnCloseNavDrawer');
+      const drawerPanel = document.getElementById('navDrawerPanel');
+      const drawerBackdrop = document.getElementById('navDrawerBackdrop');
+
+      const openDrawer = () => {
+        if (!drawerPanel || !drawerBackdrop) return;
+        drawerBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+        drawerBackdrop.classList.add('opacity-100', 'pointer-events-auto');
+        drawerPanel.classList.remove('translate-x-full');
+        drawerPanel.classList.add('translate-x-0');
+        this.updateDrawerUI();
+      };
+
+      const closeDrawer = () => {
+        if (!drawerPanel || !drawerBackdrop) return;
+        drawerPanel.classList.remove('translate-x-0');
+        drawerPanel.classList.add('translate-x-full');
+        drawerBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        drawerBackdrop.classList.add('opacity-0', 'pointer-events-none');
+      };
+
+      if (btnHamburger) btnHamburger.addEventListener('click', openDrawer);
+      if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', closeDrawer);
+      if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && drawerPanel && !drawerPanel.classList.contains('translate-x-full')) {
+          closeDrawer();
+        }
+      });
+
+      // Role Switchers in Drawer
+      const navOrg = document.getElementById('drawerNavOrganizer');
+      if (navOrg) {
+        navOrg.addEventListener('click', () => {
+          this.switchRole('organizer');
+          closeDrawer();
+        });
+      }
+
+      const navAtt = document.getElementById('drawerNavAttendee');
+      if (navAtt) {
+        navAtt.addEventListener('click', () => {
+          this.switchRole('attendee');
+          closeDrawer();
+        });
+      }
+
+      // Quick Actions in Drawer
+      const btnNewEvent = document.getElementById('drawerBtnNewEvent');
+      if (btnNewEvent) {
+        btnNewEvent.addEventListener('click', () => {
+          this.switchRole('organizer');
+          closeDrawer();
+          const modal = document.getElementById('createEventModal');
+          if (modal) {
+            modal.classList.remove('hidden');
+            if (global.Organizer && typeof global.Organizer.initCreateEventMap === 'function') {
+              global.Organizer.initCreateEventMap();
+            }
+          }
+        });
+      }
+
+      const btnManageWhitelist = document.getElementById('drawerBtnManageWhitelist');
+      if (btnManageWhitelist) {
+        btnManageWhitelist.addEventListener('click', () => {
+          this.switchRole('organizer');
+          closeDrawer();
+          if (global.Organizer && typeof global.Organizer.openWhitelistModal === 'function') {
+            global.Organizer.openWhitelistModal();
+          }
+        });
+      }
+
+      const btnFullscreen = document.getElementById('drawerBtnFullscreen');
+      if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', () => {
+          this.switchRole('organizer');
+          closeDrawer();
+          if (global.Organizer && typeof global.Organizer.toggleFullscreenQR === 'function') {
+            global.Organizer.toggleFullscreenQR();
+          }
+        });
+      }
+
+      const btnExportCsv = document.getElementById('drawerBtnExportCsv');
+      if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', () => {
+          closeDrawer();
+          if (global.Organizer && typeof global.Organizer.exportCsv === 'function') {
+            global.Organizer.exportCsv();
+          }
+        });
+      }
+
+      // Theme toggle in drawer
+      const btnToggleTheme = document.getElementById('drawerToggleTheme');
+      if (btnToggleTheme) {
+        btnToggleTheme.addEventListener('click', () => {
+          const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+          const next = current === 'dark' ? 'light' : 'dark';
+          this.setTheme(next);
+          this.showToast(`${next === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'} Activated`, 'info');
+        });
+      }
+
+      // Auth action in drawer
+      const btnDrawerAuth = document.getElementById('drawerAuthActionBtn');
+      if (btnDrawerAuth) {
+        btnDrawerAuth.addEventListener('click', () => {
+          if (this.currentUser) {
+            this.signOutGoogle();
+            closeDrawer();
+          } else {
+            closeDrawer();
+            this.triggerGoogleLogin();
+          }
+        });
+      }
+
+      this.updateDrawerUI();
+    },
+
+    updateDrawerUI() {
+      const avatar = document.getElementById('drawerUserAvatar');
+      const name = document.getElementById('drawerUserName');
+      const email = document.getElementById('drawerUserEmail');
+      const btnAuth = document.getElementById('drawerAuthActionBtn');
+
+      if (this.currentUser) {
+        if (avatar) avatar.src = this.currentUser.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(this.currentUser.name || this.currentUser.email)}`;
+        if (name) name.textContent = this.currentUser.name || this.currentUser.email.split('@')[0];
+        if (email) email.textContent = this.currentUser.email;
+        if (btnAuth) {
+          btnAuth.textContent = 'Sign Out';
+          btnAuth.className = 'px-3 py-1 rounded-full text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-sm transition-colors';
+        }
+      } else {
+        if (avatar) avatar.src = 'https://api.dicebear.com/7.x/initials/svg?seed=Guest';
+        if (name) name.textContent = 'Guest';
+        if (email) email.textContent = 'Not signed in';
+        if (btnAuth) {
+          btnAuth.textContent = 'Sign In';
+          btnAuth.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-950 dark:bg-white text-white dark:text-slate-900 cursor-pointer shadow-sm hover:opacity-90 transition-all';
+        }
+      }
+
+      this.updateDrawerThemeUI();
+
+      // Highlight active role
+      const navOrg = document.getElementById('drawerNavOrganizer');
+      const navAtt = document.getElementById('drawerNavAttendee');
+      if (this.currentRole === 'organizer') {
+        navOrg?.classList.add('bg-slate-100', 'dark:bg-slate-800', 'font-extrabold');
+        navAtt?.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'font-extrabold');
+      } else {
+        navAtt?.classList.add('bg-slate-100', 'dark:bg-slate-800', 'font-extrabold');
+        navOrg?.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'font-extrabold');
+      }
+    },
+
+    updateDrawerThemeUI() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const themeIcon = document.getElementById('drawerThemeIcon');
+      const themeText = document.getElementById('drawerThemeText');
+      if (themeIcon) themeIcon.textContent = isDark ? '🌙' : '☀️';
+      if (themeText) themeText.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+    },
+
     initTheme() {
       const saved = localStorage.getItem('geoattend_theme');
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -125,6 +298,7 @@
         if (moon) moon.classList.remove('hidden');
         if (sun) sun.classList.add('hidden');
       }
+      this.updateDrawerThemeUI();
     },
 
     bindGoogleAuth() {
@@ -382,6 +556,8 @@
         userPill?.classList.add('hidden');
         if (modalActive) modalActive.classList.add('hidden');
       }
+
+      this.updateDrawerUI();
     },
 
     getAuthHeaders() {
@@ -430,6 +606,8 @@
           global.Attendee.refreshPassCard();
         }
       }
+
+      this.updateDrawerUI();
     },
 
     showToast(message, type = 'info') {
