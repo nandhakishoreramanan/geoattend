@@ -429,16 +429,16 @@
             <span>✦ Event-Specific QR</span>
           </div>
 
-          <!-- Circular Status Ring -->
-          <div class="flex items-center gap-1.5" title="Unique static QR code for this event. Anti-proxy protected by Google OAuth + GPS Geofence.">
+          <!-- Circular Status Ring (Only displayed if dynamic QR rotation is active) -->
+          <div id="qrCountdownContainer" class="hidden items-center gap-1.5" title="Rotates dynamically to prevent proxy attendance">
             <div class="relative w-8 h-8 flex items-center justify-center">
               <svg class="w-8 h-8" viewBox="0 0 40 40">
                 <circle cx="20" cy="20" r="18" fill="none" stroke="#cbd5e1" stroke-width="3" />
                 <circle id="qrCountdownRing" class="progress-ring-circle" cx="20" cy="20" r="18" fill="none" stroke="#0f172a" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="0" />
               </svg>
-              <span id="qrCountdownText" class="absolute text-[9px] font-mono font-bold text-slate-950">Event</span>
+              <span id="qrCountdownText" class="absolute text-[9px] font-mono font-bold text-slate-950"></span>
             </div>
-            <span id="qrValidityRemaining" class="text-xs font-mono font-bold text-slate-700">Static</span>
+            <span id="qrValidityRemaining" class="text-xs font-mono font-bold text-slate-700"></span>
           </div>
         </div>
 
@@ -1562,12 +1562,12 @@
       </div>
 
       <div class="flex items-center justify-center gap-4">
-        <div class="relative w-12 h-12 flex items-center justify-center">
+        <div id="fsCountdownContainer" class="hidden relative w-12 h-12 items-center justify-center">
           <svg class="w-12 h-12" viewBox="0 0 40 40">
             <circle cx="20" cy="20" r="18" fill="none" stroke="#1e293b" stroke-width="3" />
             <circle id="fsQrCountdownRing" class="progress-ring-circle" cx="20" cy="20" r="18" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="0" />
           </svg>
-          <span id="fsQrCountdownText" class="absolute text-xs font-mono font-bold text-blue-400">Static</span>
+          <span id="fsQrCountdownText" class="absolute text-xs font-mono font-bold text-blue-400"></span>
         </div>
         <div class="text-left text-xs">
           <div class="font-bold text-white">Event-Specific QR Code</div>

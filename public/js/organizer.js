@@ -450,8 +450,13 @@
       const qrCodeText = document.getElementById('liveQrCodeText');
       if (qrCodeText) qrCodeText.textContent = 'Click "+ New Event" to generate QR code';
 
+      const countdownContainer = document.getElementById('qrCountdownContainer');
+      if (countdownContainer) {
+        countdownContainer.classList.add('hidden');
+        countdownContainer.classList.remove('flex');
+      }
       const qrValidity = document.getElementById('qrValidityRemaining');
-      if (qrValidity) qrValidity.textContent = '--';
+      if (qrValidity) qrValidity.textContent = '';
 
       const tableBody = document.getElementById('attendeesTableBody');
       if (tableBody) {
@@ -800,7 +805,18 @@
           const fsToken = document.getElementById('fullscreenQrTokenDisplay');
           if (fsToken) fsToken.textContent = data.token;
 
+          const countdownContainer = document.getElementById('qrCountdownContainer');
+          const fsCountdownContainer = document.getElementById('fsCountdownContainer');
+
           if (data.is_dynamic) {
+            if (countdownContainer) {
+              countdownContainer.classList.remove('hidden');
+              countdownContainer.classList.add('flex');
+            }
+            if (fsCountdownContainer) {
+              fsCountdownContainer.classList.remove('hidden');
+              fsCountdownContainer.classList.add('flex');
+            }
             let timeLeft = data.remaining_seconds;
             const total = data.window_seconds || 20;
 
@@ -831,16 +847,25 @@
               }
             }, 1000);
           } else {
+            // For static event QR codes, hide the countdown ring & clear any text completely
+            if (countdownContainer) {
+              countdownContainer.classList.add('hidden');
+              countdownContainer.classList.remove('flex');
+            }
+            if (fsCountdownContainer) {
+              fsCountdownContainer.classList.add('hidden');
+              fsCountdownContainer.classList.remove('flex');
+            }
             const textEl = document.getElementById('qrCountdownText');
-            if (textEl) textEl.textContent = 'Static';
+            if (textEl) textEl.textContent = '';
             const fsTextEl = document.getElementById('fsQrCountdownText');
-            if (fsTextEl) fsTextEl.textContent = 'Static';
+            if (fsTextEl) fsTextEl.textContent = '';
             const ring = document.getElementById('qrCountdownRing');
             if (ring) ring.style.strokeDashoffset = 0;
             const fsRing = document.getElementById('fsQrCountdownRing');
             if (fsRing) fsRing.style.strokeDashoffset = 0;
             const valRemaining = document.getElementById('qrValidityRemaining');
-            if (valRemaining) valRemaining.textContent = 'Static';
+            if (valRemaining) valRemaining.textContent = '';
           }
         } catch (err) {
           console.error('Failed to update QR:', err);
