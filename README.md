@@ -139,7 +139,7 @@ To eliminate buddy-punching, off-site attendance fraud, and stolen credential ab
 
 ## 🌟 Additional Features Added (Bonus ⭐)
 
-### 1. 🤖 Local Qwen 2.5 3B AI Engine (Ollama on Apple Silicon M1)
+### 1. 🤖 Local Qwen 2.5 3B AI Engine (will use cloud api keys once I am rich enough :) )
 - **100% On-Device Privacy • No Paid Cloud API Keys**: Runs local inference via **Ollama** using `qwen2.5:3b` (~3.4B parameters, ~1.9GB) accelerated by Apple Silicon Metal GPU (~45-60 tokens/sec on MacBook Air M1). Supports hot-swapping to `qwen2.5:0.5b` (~350MB) for ultra-low latency.
 - **Zero-Cloud-Cost Guarantee**: All natural language queries, summaries, recommendations, and security audits run 100% on localhost. No OpenAI or cloud API bills.
 - **Smart Deterministic Fallback**: If the local Ollama daemon is offline, a built-in deterministic heuristic engine automatically provides 100% uptime with zero crashes or error states.
