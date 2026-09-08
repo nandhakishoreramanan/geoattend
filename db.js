@@ -5,11 +5,26 @@
 
 const { DatabaseSync } = require('node:sqlite');
 const path = require('node:path');
+const fs = require('node:fs');
 const { generateSecretKey } = require('./qr');
 const { calculateDistance } = require('./geo');
 const { hashPassword, verifyPassword } = require('./auth');
 
-const DB_PATH = path.join(__dirname, 'attendance.db');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+let DB_PATH = path.join(__dirname, 'attendance.db');
+
+if (isServerless) {
+  const tmpDbPath = path.join('/tmp', 'attendance.db');
+  try {
+    if (!fs.existsSync(tmpDbPath) && fs.existsSync(DB_PATH)) {
+      fs.copyFileSync(DB_PATH, tmpDbPath);
+    }
+  } catch (err) {
+    console.warn('Could not copy seed DB to /tmp:', err.message);
+  }
+  DB_PATH = tmpDbPath;
+}
+
 const db = new DatabaseSync(DB_PATH);
 
 try {

@@ -357,6 +357,15 @@ Tables are automatically created and seeded on initial launch:
 
 ## 🚢 Deployment Guide
 
+### Deploying to Vercel (Live Production)
+- **Live Production URL**: [https://foodwastage-three.vercel.app](https://foodwastage-three.vercel.app)
+
+1. Deploy directly with the Vercel CLI:
+   ```bash
+   npx vercel --prod
+   ```
+2. The project includes pre-configured `vercel.json` running `server.js` natively on Node 22, featuring automatic `/tmp` SQLite writable database migration and edge asset delivery for the single-page frontend.
+
 ### Deploying to Render (Free Cloud Hosting)
 1. Push this repository to your GitHub account.
 2. Sign in to [Render](https://render.com/) and click **New + &rarr; Web Service**.

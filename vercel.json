@@ -1,0 +1,17 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "geoattend"
+      }
+    }
+  ],
+  "services": {
+    "geoattend": {
+      "root": ".",
+      "entrypoint": "server.js"
+    }
+  }
+}

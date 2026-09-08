@@ -330,6 +330,10 @@
         this.sseSource.close();
         this.sseSource = null;
       }
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
 
       await Promise.all([
         this.loadEventStats(eventId),
@@ -397,6 +401,10 @@
       if (this.sseSource) {
         this.sseSource.close();
         this.sseSource = null;
+      }
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
       }
       if (this.qrInterval) {
         clearInterval(this.qrInterval);
@@ -528,6 +536,18 @@
         liveIndicator.classList.remove('bg-emerald-500');
         liveIndicator.classList.add('bg-amber-500');
       }
+
+      if (this.pollInterval) clearInterval(this.pollInterval);
+      this.pollInterval = setInterval(async () => {
+        if (!this.currentEventId || this.currentEventId !== eventId) return;
+        try {
+          const res = await fetch(`/api/events/${eventId}/stats`);
+          if (res.ok) {
+            const data = await res.json();
+            this.renderStats(data);
+          }
+        } catch (e) {}
+      }, 4000);
 
       this.sseSource = new EventSource(`/api/events/${eventId}/live-stream`);
 

@@ -111,6 +111,22 @@ if (heartbeatInterval.unref) heartbeatInterval.unref();
  * Helper to read JSON request body
  */
 function parseJsonBody(req) {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'object') {
+      return Promise.resolve(req.body);
+    }
+    if (typeof req.body === 'string' && req.body.trim().length > 0) {
+      try {
+        return Promise.resolve(JSON.parse(req.body));
+      } catch (err) {
+        return Promise.reject(new Error('Invalid JSON'));
+      }
+    }
+    if (typeof req.body === 'string' && req.body.trim().length === 0) {
+      return Promise.resolve({});
+    }
+  }
+
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', chunk => {
@@ -1361,4 +1377,8 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, handleRequest, sseSubscribers, broadcastToEvent };
+module.exports = handleRequest;
+module.exports.server = server;
+module.exports.handleRequest = handleRequest;
+module.exports.sseSubscribers = sseSubscribers;
+module.exports.broadcastToEvent = broadcastToEvent;
