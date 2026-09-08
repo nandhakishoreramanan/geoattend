@@ -57,7 +57,11 @@
           }
         } else if (hashParams.has('google_error')) {
           const err = hashParams.get('google_error');
-          window.location.hash = 'attendee';
+          try {
+            history.replaceState(null, '', window.location.pathname + '#attendee');
+          } catch (e) {
+            window.location.hash = 'attendee';
+          }
           setTimeout(() => {
             const isFetchError = err.includes('fetch') || err.includes('offline') || err.includes('ENOTFOUND');
             if (isFetchError) {
@@ -462,9 +466,19 @@
       } catch (e) {}
     },
 
-    triggerGoogleLogin() {
-      // Open modal directly so user can pick instant 1-click accounts or type email with zero fetch-failed issues
-      this.openGoogleAuthModal();
+    async triggerGoogleLogin() {
+      try {
+        const res = await fetch('/api/auth/google/config');
+        const data = await res.json();
+        if (data.configured) {
+          this.showToast('Redirecting to Google sign-in...', 'info');
+          window.location.href = '/api/auth/google/login';
+        } else {
+          this.openGoogleAuthModal(true);
+        }
+      } catch (e) {
+        this.openGoogleAuthModal(true);
+      }
     },
 
     openGoogleAuthModal(showSetup = false, alertMessage = null) {
