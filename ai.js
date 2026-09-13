@@ -15,7 +15,7 @@
  */
 
 let OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
-let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b';
+let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
 
 /**
  * Check if local Ollama daemon is running and detect installed models
@@ -23,16 +23,18 @@ let ACTIVE_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b';
 async function getOllamaStatus() {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
       const models = (data.models || []).map(m => m.name);
-      // Prefer qwen2.5:3b if available
+      // Prefer qwen2.5:0.5b for ultra-fast response, or qwen2.5:3b
       if (!process.env.OLLAMA_MODEL) {
-        if (models.some(m => m.includes('qwen2.5:3b'))) {
+        if (models.some(m => m.includes('qwen2.5:0.5b'))) {
+          ACTIVE_MODEL = models.find(m => m.includes('qwen2.5:0.5b'));
+        } else if (models.some(m => m.includes('qwen2.5:3b'))) {
           ACTIVE_MODEL = models.find(m => m.includes('qwen2.5:3b'));
         } else if (models.length > 0) {
           ACTIVE_MODEL = models[0];
@@ -80,7 +82,7 @@ function setOllamaConfig(config = {}) {
 /**
  * Call local Ollama generate endpoint with safe timeout and fallback
  */
-async function callLocalOllama(prompt, systemPrompt = '', timeoutMs = 12000, maxTokens = 180) {
+async function callLocalOllama(prompt, systemPrompt = '', timeoutMs = 45000, maxTokens = 180) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -196,7 +198,7 @@ async function generateAttendanceInsights(event, attendees, metrics = {}) {
   const prompt = `Event: "${event.title}" at ${event.venue_name || 'Campus'}. Total check-ins: ${total}, Verified on-site: ${verified}, Out-of-bounds attempts: ${outOfBounds}, Allowed radius: ${event.radius_meters}m. Health score: ${healthScore}/100. Write a 2-sentence executive summary with 1 operational recommendation.`;
   const systemPrompt = `You are GeoAttend AI, an attendance analyst running locally on Qwen/Ollama. Provide direct, professional, concise insights without preamble.`;
 
-  qwenSummary = await callLocalOllama(prompt, systemPrompt, 2500);
+  qwenSummary = await callLocalOllama(prompt, systemPrompt, 45000);
 
   return {
     healthScore,
@@ -225,7 +227,7 @@ async function generateEventDescription(title, venue, category = 'academic') {
   const prompt = `Write an engaging, professional 2-sentence description for a university ${category} event titled "${title}" hosted at "${venue}". Mention that attendance is verified via anti-proxy geofenced QR.`;
   const systemPrompt = `You are a university event coordinator assistant for SRM Institute of Science and Technology. Return only the event description text, no preamble or quotes.`;
 
-  const qwenText = await callLocalOllama(prompt, systemPrompt, 3000);
+  const qwenText = await callLocalOllama(prompt, systemPrompt, 45000);
 
   if (qwenText && qwenText.length > 20) {
     return {
